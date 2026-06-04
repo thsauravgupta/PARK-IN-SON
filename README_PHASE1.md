@@ -40,13 +40,5 @@ Phase 1 of a production-grade machine learning system to predict Parkinson's dis
 ## Evaluation Metrics
 - **CCC (Concordance Correlation Coefficient)**: Used as the primary metric instead of R². R² ignores systematic bias, while CCC penalises models that deviate from the line of perfect agreement.
 
-## System Design Notes
-- **Data Leakage Prevention**: Standard scalers and missing value imputers are fit strictly *inside* the 5-fold cross-validation loop.
-- **MRI Strategy**: Implements a lightweight `nilearn` Schaefer parcellation pipeline, falling back to synthetic standard normal data if NIfTI files cannot be acquired programmatically.
 
-## Interview Talking Points
-This project demonstrates:
-1. End-to-end multimodal architecture
-2. Robust data handling with external, volatile APIs
-3. Proper statistical methodology (CCC, nested CV)
-4. Production-level code standards (typing, SOLID principles)
+\
