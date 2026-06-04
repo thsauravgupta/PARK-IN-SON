@@ -1,0 +1,46 @@
+# Environment & credentials
+.env
+*.env
+
+# Data — too large for version control
+data/
+nilearn_cache/
+
+# Model artifacts
+outputs/models/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_metadata
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Distribution
+*.tar.gz
+*.whl

@@ -1,0 +1,174 @@
+# ============================================================================
+# PPMI Multimodal Parkinson's Progression Prediction — Phase 1 Configuration
+# ============================================================================
+# All paths are relative to project root. Never hardcode paths in source code.
+
+seed: 42
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+paths:
+  raw: data/raw
+  mri_raw: data/raw/mri
+  processed: data/processed
+  embeddings: data/embeddings
+  results: outputs/results
+  figures: outputs/figures
+  models: outputs/models
+  logs: outputs/logs
+
+# ---------------------------------------------------------------------------
+# Embedding dimensions per modality
+# ---------------------------------------------------------------------------
+embedding_dims:
+  clinical: 32
+  mri: 64
+  pet: 16
+  genetic: 32
+  fused: 144  # sum of above
+
+# ---------------------------------------------------------------------------
+# MRI processing
+# ---------------------------------------------------------------------------
+mri:
+  n_rois: 100            # Schaefer atlas parcels
+  use_real_mri: false     # Set true only if NIfTI files successfully downloaded
+  fallback_mode: synthetic  # 'synthetic' | 'freesurfer_csv' | 'none'
+
+# ---------------------------------------------------------------------------
+# Cross-validation
+# ---------------------------------------------------------------------------
+cv:
+  n_splits: 5
+  stratify_on: diagnosis
+
+# ---------------------------------------------------------------------------
+# Target variables
+# ---------------------------------------------------------------------------
+target:
+  regression: updrs_iii_v04       # UPDRS-III score at year 2 (V04)
+  classification: diagnosis       # PD vs HC binary label
+  regression_visit: V04
+  baseline_visit: BL
+
+# ---------------------------------------------------------------------------
+# Clinical features (from UPDRS + demographics)
+# ---------------------------------------------------------------------------
+clinical:
+  updrs_cols:
+    - updrs_i
+    - updrs_ii
+    - updrs_iii
+    - updrs_iii_a
+    - updrs_iv
+  extra_behavioral:
+    - moca
+    - tremor
+    - pigd
+    - se_adl
+    - epworth
+    - gds
+    - rbd
+    - scopa_aut
+    - semantic_fluency
+    - symbol_digit
+    - hvlt_recall
+    - hvlt_recognition
+    - hvlt_retention
+    - lns
+    - stai_state
+    - stai_trait
+    - upsit
+  demographic_cols:
+    - age
+    - gender
+    - education
+
+# ---------------------------------------------------------------------------
+# PET / DaTscan features
+# ---------------------------------------------------------------------------
+pet:
+  raw_cols:
+    - caudate_r
+    - caudate_l
+    - putamen_r
+    - putamen_l
+  epsilon: 1.0e-8  # avoid division by zero in asymmetry
+
+# ---------------------------------------------------------------------------
+# Genetic features
+# ---------------------------------------------------------------------------
+genetic:
+  target_genes:
+    - LRRK2
+    - GBA
+    - SNCA
+    - PINK1
+    - PARK2
+    - APOE
+  explicit_features:
+    - n_variants
+    - lrrk2_positive
+    - gba_positive
+
+# ---------------------------------------------------------------------------
+# Autoencoder hyperparameters
+# ---------------------------------------------------------------------------
+autoencoder:
+  clinical:
+    hidden_dims: [128, 64]
+    bottleneck: 32
+    dropout: 0.2
+    lr: 0.001
+    epochs: 100
+    patience: 10
+    batch_size: 64
+  mri:
+    hidden_dims: [256, 128]
+    bottleneck: 64
+    dropout: 0.2
+    lr: 0.001
+    epochs: 100
+    patience: 10
+    batch_size: 32
+    l1_lambda: 0.001  # sparse penalty on bottleneck
+
+# ---------------------------------------------------------------------------
+# Baseline model hyperparameter grids
+# ---------------------------------------------------------------------------
+models:
+  random_forest:
+    n_estimators: 200
+    param_grid:
+      max_depth: [5, 10, null]
+      min_samples_split: [2, 5]
+
+  xgboost:
+    n_estimators: 300
+    early_stopping_rounds: 20
+    param_grid:
+      learning_rate: [0.01, 0.1]
+      max_depth: [3, 6]
+
+  svm:
+    param_grid:
+      C: [0.1, 1, 10, 100]
+      gamma: ['scale', 'auto']
+
+  ridge:
+    alphas: [0.01, 0.1, 1.0, 10.0, 100.0]
+
+  mlp:
+    hidden_dims: [256, 128, 64]
+    dropout: 0.3
+    lr: 0.001
+    epochs: 200
+    patience: 10
+    batch_size: 64
+
+  lightgbm:
+    param_grid:
+      num_leaves: [31, 63]
+      learning_rate: [0.01, 0.1]
+      n_estimators: [100, 300]
