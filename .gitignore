@@ -1,6 +1,7 @@
 # Environment & credentials
 .env
 *.env
+.ppmi_config
 
 # Data — too large for version control
 data/

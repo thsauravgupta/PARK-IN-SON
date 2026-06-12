@@ -33,6 +33,7 @@ embedding_dims:
 # ---------------------------------------------------------------------------
 mri:
   n_rois: 100            # Schaefer atlas parcels
+  feat_per_roi: 1        # Features per ROI: 1=thickness only, 2=thickness+volume
   use_real_mri: false     # Set true only if NIfTI files successfully downloaded
   fallback_mode: synthetic  # 'synthetic' | 'freesurfer_csv' | 'none'
 
@@ -172,3 +173,33 @@ models:
       num_leaves: [31, 63]
       learning_rate: [0.01, 0.1]
       n_estimators: [100, 300]
+
+# ---------------------------------------------------------------------------
+# Multimodal Encoder (deep learning — encoders + FusionTransformer + GATv2 GNN)
+# ---------------------------------------------------------------------------
+multimodal_encoder:
+  latent_dim: 128          # Per-modality embedding dim (all encoders output this)
+  fused_dim: 256           # FusionTransformer CLS output dim (digital twin seed dim)
+  dropout: 0.1
+
+  # FusionTransformer hyperparameters
+  fusion_transformer:
+    n_heads: 8             # Attention heads (must divide latent_dim)
+    n_layers: 4            # Transformer encoder layers
+    ffn_dim: 512           # Feed-forward network width
+    dropout: 0.1
+
+  # PatientGNN (GATv2) hyperparameters
+  patient_gnn:
+    k_neighbours: 10       # k-NN graph connectivity
+    gat_heads: 4           # GAT attention heads
+    gat_layers: 2          # GAT message-passing layers
+    dropout: 0.1
+
+  # Training schedule
+  training:
+    pretrain_epochs: 50    # Per-encoder reconstruction pretraining epochs
+    finetune_epochs: 100   # End-to-end fine-tuning epochs (with downstream task)
+    lr: 1.0e-4
+    batch_size: 32
+    patience: 15           # Early stopping patience (both pretrain + finetune)
