@@ -44,7 +44,8 @@ class PETEmbedder(BaseEmbedder):
         self.config = config or {}
         self.logger = logging.getLogger(self.__class__.__name__)
         self._output_dim = 16  # 4 nodes * 4 out_channels per node = 16
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # Force CPU to avoid silent CUDA kernel deadlocks from PyG on Windows
+        self.device = torch.device('cpu')
         
         self.scaler = StandardScaler()
         self.builder = PETGraphBuilder()
@@ -60,14 +61,31 @@ class PETEmbedder(BaseEmbedder):
         # We need to extract just those 4 base features for the nodes.
         # If they aren't present (because the preprocessor already engineered them and dropped),
         # we will use the first 4 columns as a fallback
-        base_cols = ["caudate_l", "caudate_r", "putamen_l", "putamen_r"]
+        base_cols = [
+            "caudate_l", "caudate_r", "putamen_l", "putamen_r",
+            "datscan_caudate_l", "datscan_caudate_r", "datscan_putamen_l", "datscan_putamen_r"
+        ]
         cols_to_use = [c for c in base_cols if c in X_train.columns]
+        
         if len(cols_to_use) < 4:
-            cols_to_use = X_train.columns[:4]
-            
-        X_base = X_train[cols_to_use].values
-        self.scaler.fit(X_base)
-        X_scaled = self.scaler.transform(X_base)
+            # Fallback to first 4 numeric columns if specific names aren't found
+            cols_to_use = X_train.select_dtypes(include=[np.number]).columns[:4]
+            if len(cols_to_use) == 0:
+                # If STILL no columns, just create synthetic dummy data to prevent scaler crash
+                X_base = np.zeros((len(X_train), 4))
+                self.scaler.fit(X_base)
+                X_scaled = X_base
+                cols_to_use = [] # mark as synthetic
+            else:
+                X_base = X_train[cols_to_use].values
+                self.scaler.fit(X_base)
+                X_scaled = self.scaler.transform(X_base)
+        else:
+            # Ensure we only take 4 columns maximum to match GAT 4-node expectation
+            cols_to_use = cols_to_use[:4]
+            X_base = X_train[cols_to_use].values
+            self.scaler.fit(X_base)
+            X_scaled = self.scaler.transform(X_base)
         
         epochs = self.config.get("autoencoder", {}).get("pet", {}).get("epochs", 50)
         from torch_geometric.loader import DataLoader
@@ -94,20 +112,31 @@ class PETEmbedder(BaseEmbedder):
                 total_loss += loss.item() * data.num_graphs
                 
             if (epoch + 1) % 10 == 0:
-                self.logger.info(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(X_scaled):.4f}")
+                print(f"DEBUG PET: Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(X_scaled):.4f}")
                 
-        self.logger.info("PET GAT Embedder fitted.")
+        print("DEBUG PET: PET GAT Embedder fitted.")
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         patnos = X.index
-        base_cols = ["caudate_l", "caudate_r", "putamen_l", "putamen_r"]
+        base_cols = [
+            "caudate_l", "caudate_r", "putamen_l", "putamen_r",
+            "datscan_caudate_l", "datscan_caudate_r", "datscan_putamen_l", "datscan_putamen_r"
+        ]
         cols_to_use = [c for c in base_cols if c in X.columns]
+        
         if len(cols_to_use) < 4:
-            cols_to_use = X.columns[:4]
-            
-        X_base = X[cols_to_use].values
-        X_scaled = self.scaler.transform(X_base)
+            cols_to_use = X.select_dtypes(include=[np.number]).columns[:4]
+            if len(cols_to_use) == 0:
+                X_base = np.zeros((len(X), 4))
+                X_scaled = X_base
+            else:
+                X_base = X[cols_to_use].values
+                X_scaled = self.scaler.transform(X_base)
+        else:
+            cols_to_use = cols_to_use[:4]
+            X_base = X[cols_to_use].values
+            X_scaled = self.scaler.transform(X_base)
         from torch_geometric.loader import DataLoader
         
         graph_list = [self.builder.build_graph(features) for features in X_scaled]

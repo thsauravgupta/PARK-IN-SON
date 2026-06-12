@@ -40,7 +40,8 @@ class MRIEmbedder(BaseEmbedder):
         self.config = config or {}
         self.logger = logging.getLogger(self.__class__.__name__)
         self._output_dim = 64
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # Force CPU to avoid silent CUDA kernel deadlocks from PyG on Windows
+        self.device = torch.device('cpu')
         
         self.scaler = StandardScaler()
         self.builder = MRIGraphBuilder(n_nodes=self.config.get("mri", {}).get("n_rois", 100))
@@ -50,7 +51,9 @@ class MRIEmbedder(BaseEmbedder):
 
     def fit(self, X_train: pd.DataFrame) -> 'BaseEmbedder':
         self.logger.info(f"Training MRI GAE on {self.device}...")
+        print("DEBUG MRI: Starting scaler fit")
         self.scaler.fit(X_train.values)
+        print("DEBUG MRI: Starting scaler transform")
         X_scaled = self.scaler.transform(X_train.values)
         
         epochs = self.config.get("autoencoder", {}).get("mri", {}).get("epochs", 50)
@@ -58,10 +61,13 @@ class MRIEmbedder(BaseEmbedder):
         
         # Pre-build all graphs
         self.logger.info("Pre-building MRI graphs...")
+        print("DEBUG MRI: Building graphs list")
         graph_list = [self.builder.build_graph(features) for features in X_scaled]
+        print(f"DEBUG MRI: Graph list built. {len(graph_list)} graphs")
         loader = DataLoader(graph_list, batch_size=64, shuffle=True)
         
         self.model.train()
+        print("DEBUG MRI: Starting epoch loop")
         for epoch in range(epochs):
             total_loss = 0
             for data in loader:
@@ -80,9 +86,9 @@ class MRIEmbedder(BaseEmbedder):
                 total_loss += loss.item() * data.num_graphs
                 
             if (epoch + 1) % 10 == 0:
-                self.logger.info(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(X_scaled):.4f}")
+                print(f"DEBUG MRI: Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(X_scaled):.4f}")
                 
-        self.logger.info("MRI GAE Embedder fitted.")
+        print("DEBUG MRI: MRI GAE Embedder fitted.")
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
