@@ -70,13 +70,17 @@ class PETEmbedder(BaseEmbedder):
         X_scaled = self.scaler.transform(X_base)
         
         epochs = self.config.get("autoencoder", {}).get("pet", {}).get("epochs", 50)
+        from torch_geometric.loader import DataLoader
+        
+        # Pre-build all graphs
+        self.logger.info("Pre-building PET graphs...")
+        graph_list = [self.builder.build_graph(features) for features in X_scaled]
+        loader = DataLoader(graph_list, batch_size=64, shuffle=True)
         
         self.model.train()
         for epoch in range(epochs):
             total_loss = 0
-            for i in range(len(X_scaled)):
-                features = X_scaled[i]
-                data = self.builder.build_graph(features)
+            for data in loader:
                 data = data.to(self.device)
                 
                 edge_index = apply_dropedge(data.edge_index, p=0.05, training=True)
@@ -87,7 +91,7 @@ class PETEmbedder(BaseEmbedder):
                 loss = self.criterion(reconstructed, data.x)
                 loss.backward()
                 self.optimizer.step()
-                total_loss += loss.item()
+                total_loss += loss.item() * data.num_graphs
                 
             if (epoch + 1) % 10 == 0:
                 self.logger.info(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(X_scaled):.4f}")
@@ -104,20 +108,21 @@ class PETEmbedder(BaseEmbedder):
             
         X_base = X[cols_to_use].values
         X_scaled = self.scaler.transform(X_base)
+        from torch_geometric.loader import DataLoader
+        
+        graph_list = [self.builder.build_graph(features) for features in X_scaled]
+        loader = DataLoader(graph_list, batch_size=64, shuffle=False)
         
         self.model.eval()
         embeds = []
         with torch.no_grad():
-            for i in range(len(X_scaled)):
-                features = X_scaled[i]
-                data = self.builder.build_graph(features)
+            for data in loader:
                 data = data.to(self.device)
-                
                 z = self.model.encode(data.x, data.edge_index)
                 
-                # Flatten the 4 nodes x 4 channels into a single 16-dim vector
-                graph_emb = z.view(-1).cpu().numpy()
-                embeds.append(graph_emb)
+                # Reshape from (batch_size*4, 4) to (batch_size, 16)
+                z_reshaped = z.view(-1, 16).cpu().numpy()
+                embeds.extend(z_reshaped)
                 
         embeds = np.array(embeds)
         return pd.DataFrame(embeds, index=patnos, columns=[f"PET_{i}" for i in range(self._output_dim)])

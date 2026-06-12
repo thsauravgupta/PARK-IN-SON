@@ -54,13 +54,17 @@ class MRIEmbedder(BaseEmbedder):
         X_scaled = self.scaler.transform(X_train.values)
         
         epochs = self.config.get("autoencoder", {}).get("mri", {}).get("epochs", 50)
+        from torch_geometric.loader import DataLoader
+        
+        # Pre-build all graphs
+        self.logger.info("Pre-building MRI graphs...")
+        graph_list = [self.builder.build_graph(features) for features in X_scaled]
+        loader = DataLoader(graph_list, batch_size=64, shuffle=True)
         
         self.model.train()
         for epoch in range(epochs):
             total_loss = 0
-            for i in range(len(X_scaled)):
-                features = X_scaled[i]
-                data = self.builder.build_graph(features)
+            for data in loader:
                 data = data.to(self.device)
                 
                 # Apply Graph Augmentations
@@ -73,7 +77,7 @@ class MRIEmbedder(BaseEmbedder):
                 loss = self.criterion(reconstructed, data.x) # reconstruct original x
                 loss.backward()
                 self.optimizer.step()
-                total_loss += loss.item()
+                total_loss += loss.item() * data.num_graphs
                 
             if (epoch + 1) % 10 == 0:
                 self.logger.info(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(X_scaled):.4f}")
@@ -84,18 +88,25 @@ class MRIEmbedder(BaseEmbedder):
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         patnos = X.index
         X_scaled = self.scaler.transform(X.values)
+        from torch_geometric.loader import DataLoader
+        
+        graph_list = [self.builder.build_graph(features) for features in X_scaled]
+        # Sequential loader without shuffle for transform
+        loader = DataLoader(graph_list, batch_size=64, shuffle=False)
+        
         self.model.eval()
         
         embeds = []
         with torch.no_grad():
-            for i in range(len(X_scaled)):
-                features = X_scaled[i]
-                data = self.builder.build_graph(features)
+            for data in loader:
                 data = data.to(self.device)
                 z = self.model.encode(data.x, data.edge_index)
+                
                 # Global mean pooling over nodes to get graph-level embedding
-                graph_emb = z.mean(dim=0).cpu().numpy()
-                embeds.append(graph_emb)
+                # batch attribute tells us which node belongs to which graph
+                from torch_geometric.nn import global_mean_pool
+                graph_emb = global_mean_pool(z, data.batch).cpu().numpy()
+                embeds.extend(graph_emb)
                 
         embeds = np.array(embeds)
         return pd.DataFrame(embeds, index=patnos, columns=[f"MRI_{i}" for i in range(self._output_dim)])
