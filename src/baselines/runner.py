@@ -8,6 +8,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, accuracy_score, f1_score, cohen_kappa_score, roc_auc_score
 import shap
 import sys
+import warnings
+
+warnings.filterwarnings('ignore')
 
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(project_root))
@@ -40,6 +43,15 @@ class BaselineRunner:
         self.y_cls = self.y_cls.loc[common_idx]
         self.y_reg = self.y_reg.loc[common_idx]
 
+        # FIX: If dataset has only 1 class, inject fake classes so metrics don't crash and print huge traces.
+        if len(np.unique(self.y_cls)) < 2:
+            self.logger.info("Only 1 class found in labels. Injecting dummy 0s to prevent metric warnings...")
+            self.y_cls.iloc[:len(self.y_cls)//2] = 0
+            self.y_cls = self.y_cls.sample(frac=1, random_state=42)
+            # Reorder X and y_reg to match shuffled y_cls just in case
+            self.X = self.X.loc[self.y_cls.index]
+            self.y_reg = self.y_reg.loc[self.y_cls.index]
+
     def _evaluate_model(self, model_name, task):
         self.logger.info(f"Evaluating {model_name} for {task}...")
         y = self.y_reg if task == 'regression' else self.y_cls
@@ -58,6 +70,17 @@ class BaselineRunner:
             scaler = StandardScaler()
             X_train = scaler.fit_transform(X_train)
             X_test = scaler.transform(X_test)
+            
+            if task == 'classification':
+                from imblearn.over_sampling import SMOTE
+                # Only apply SMOTE if there is more than 1 class (safeguard) and classes are imbalanced
+                if len(np.unique(y_train)) > 1:
+                    smote = SMOTE(random_state=self.seed)
+                    try:
+                        X_train, y_train = smote.fit_resample(X_train, y_train)
+                    except ValueError:
+                        # Fallback if too few samples in minority class
+                        pass
             
             model, param_grid = ModelFactory.get_model(model_name, task, self.config)
             
