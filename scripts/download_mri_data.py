@@ -29,11 +29,19 @@ def main():
         dl = PPMIDownloader()
         
         logger.info("Fetching 3D T1 metadata...")
-        dl.download_3D_T1_info()
+        csv_file = dl.download_3D_T1_info(destination_dir=str(mri_path))
+        import pandas as pd
+        cohort = pd.read_csv(csv_file)
+        
+        # Rename columns to match what ppmi_downloader expects internally
+        if "Subject ID" in cohort.columns:
+            cohort = cohort.rename(columns={"Subject ID": "PATNO"})
+        if "Visit" in cohort.columns:
+            cohort = cohort.rename(columns={"Visit": "EVENT_ID"})
         
         # Download a subset or all - here we assume a predefined list or all available
         logger.info("Downloading NIfTI imaging data...")
-        dl.download_imaging_data(type='nifti', destination_dir=str(mri_path))
+        dl.download_imaging_data(cohort, destination_dir=str(mri_path))
         
         nifti_files = list(mri_path.rglob("*.nii*"))
         logger.info(f"Downloaded {len(nifti_files)} NIfTI files.")

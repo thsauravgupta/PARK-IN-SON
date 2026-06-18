@@ -15,9 +15,13 @@ class FusionPipeline:
         """X_dict is dict of DataFrames"""
         for name, (prep, emb) in self.modality_dict.items():
             if name in X_dict:
-                self.logger.info(f"Fitting {name} pipeline...")
+                print(f"DEBUG: Starting {name} preprocessor fit...")
                 prep.fit(X_dict[name])
-                emb.fit(prep.transform(X_dict[name]))
+                print(f"DEBUG: Starting {name} preprocessor transform...")
+                transformed_data = prep.transform(X_dict[name])
+                print(f"DEBUG: Starting {name} embedder fit...")
+                emb.fit(transformed_data)
+                print(f"DEBUG: Finished {name} embedder fit.")
         return self
         
     def transform(self, X_dict):
