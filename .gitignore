@@ -3,7 +3,7 @@
 *.env
 
 # Data — too large for version control
-data/
+
 nilearn_cache/
 
 # Model artifacts
