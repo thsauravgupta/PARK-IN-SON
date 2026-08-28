@@ -28,9 +28,11 @@ class FedPhenoGraft(nn.Module):
     Includes Mask Tokens for missing modalities, MC Dropout, Shared-Private embeddings, 
     and Asymmetric Attention guided by Clinical embeddings.
     """
-    def __init__(self, input_dims, embed_dim=32, num_heads=4, dropout=0.2):
+    def __init__(self, input_dims, embed_dim=32, num_heads=4, dropout=0.2,
+                 use_attention=True):
         super().__init__()
-        
+        self.use_attention = use_attention
+
         # Clinical Encoder (Primary Phenotype)
         self.clin_encoder = nn.Sequential(
             nn.Linear(input_dims['clinical'], 64),
@@ -61,7 +63,15 @@ class FedPhenoGraft(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(128, 1)
         )
-        
+
+        # PD vs HC Classification Head (multitask, shares the fused representation)
+        self.classification_head = nn.Sequential(
+            nn.Linear(embed_dim * 4, 64),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(64, 1)
+        )
+
         self.hsic_loss = HSICLoss(sigma=1.0)
 
     def enable_mc_dropout(self):
@@ -90,13 +100,18 @@ class FedPhenoGraft(nn.Module):
         gen_mask = batch['genetic_mask'].view(N, 1, 1).expand(-1, 1, gen_shared.size(-1))
         gen_shared = gen_shared * (1 - gen_mask) + self.gen_mask_token.expand(N, -1, -1) * gen_mask
         
-        # Multi-modal fusion via Querying
-        mri_out, mri_attn_weights = self.mri_attn(clin_q, mri_shared)
-        pet_out, pet_attn_weights = self.pet_attn(clin_q, pet_shared)
-        gen_out, gen_attn_weights = self.gen_attn(clin_q, gen_shared)
+        # Multi-modal fusion via Querying (ablation: plain concat when disabled)
+        if self.use_attention:
+            mri_out, mri_attn_weights = self.mri_attn(clin_q, mri_shared)
+            pet_out, pet_attn_weights = self.pet_attn(clin_q, pet_shared)
+            gen_out, gen_attn_weights = self.gen_attn(clin_q, gen_shared)
+        else:
+            mri_out, pet_out, gen_out = mri_shared, pet_shared, gen_shared
+            mri_attn_weights = pet_attn_weights = gen_attn_weights = None
         
         fused = torch.cat([clin_q.squeeze(1), mri_out.squeeze(1), pet_out.squeeze(1), gen_out.squeeze(1)], dim=1)
         pred = self.prediction_head(fused)
+        cls_logit = self.classification_head(fused)
         
         # Accumulate Orthogonality constraints
         hsic = self.hsic_loss(mri_shared.squeeze(1), mri_private) + \
@@ -105,6 +120,7 @@ class FedPhenoGraft(nn.Module):
                     
         return {
             'pred': pred.squeeze(-1),
+            'cls_logit': cls_logit.squeeze(-1),
             'loss_hsic': hsic,
             'attn_weights': {
                 'mri': mri_attn_weights,

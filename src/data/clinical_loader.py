@@ -64,14 +64,20 @@ def load_updrs(raw_dir: Path, visit: str = "BL") -> pd.DataFrame:
         df = _safe_read(fpath)
         df = _filter_visit(df, visit)
 
-        # Sum all NP* columns (individual item scores) to get part total
-        np_cols = [c for c in df.columns if c.startswith("NP") or c.startswith("NHY")]
-        if np_cols:
-            df[col_name] = pd.to_numeric(df[np_cols].sum(axis=1), errors='coerce')
+        # Prefer the official PPMI total column (NP1RTOT/NP1PTOT/NP2PTOT/
+        # NP3TOT/NP4TOT). Summing raw NP* columns must EXCLUDE the total
+        # (double-counting) and NHY (Hoehn & Yahr stage, not a UPDRS item).
+        tot_cols = [c for c in df.columns
+                    if c.upper().startswith("NP") and c.upper().endswith("TOT")]
+        item_cols = [c for c in df.columns
+                     if c.startswith("NP") and not c.upper().endswith("TOT")]
+        if tot_cols:
+            df[col_name] = pd.to_numeric(df[tot_cols].sum(axis=1), errors='coerce')
+        elif item_cols:
+            df[col_name] = pd.to_numeric(df[item_cols].sum(axis=1), errors='coerce')
         elif col_name.upper() in df.columns:
             df[col_name] = pd.to_numeric(df[col_name.upper()], errors='coerce')
         else:
-            # Use total score column if available
             total_cols = [c for c in df.columns if "total" in c.lower() or "score" in c.lower()]
             if total_cols:
                 df[col_name] = pd.to_numeric(df[total_cols[0]], errors='coerce')
@@ -112,15 +118,28 @@ def load_demographics(raw_dir: Path) -> pd.DataFrame:
     out = pd.DataFrame(index=df["PATNO"])
     out.index.name = "PATNO"
 
-    # Age
-    for col in ["BIRTHDT", "BIRTH_DATE", "AGE", "AGEAT_BL", "age_at_visit"]:
-        if col in df.columns:
-            if col in ["BIRTHDT", "BIRTH_DATE"]:
-                # Calculate age from birth year (PPMI stores birth year only)
-                out["age"] = 2024 - pd.to_numeric(df[col].values, errors='coerce')
-            else:
-                out["age"] = pd.to_numeric(df[col].values, errors='coerce')
-            break
+    # Age — prefer PPMI's Age_at_visit.csv (exact age at baseline visit);
+    # fall back to parsing BIRTHDT, which PPMI stores as "MM/YYYY" text.
+    age_path = raw_dir / "Age_at_visit.csv"
+    if age_path.exists():
+        age_df = _safe_read(age_path)
+        age_df = _filter_visit(age_df, "BL")
+        if "AGE_AT_VISIT" in age_df.columns:
+            ages = pd.Series(pd.to_numeric(age_df["AGE_AT_VISIT"], errors='coerce').values,
+                             index=age_df["PATNO"].values)
+            out["age"] = ages.reindex(out.index).values
+    if "age" not in out.columns or out["age"].isna().all():
+        for col in ["BIRTHDT", "BIRTH_DATE", "AGE", "AGEAT_BL", "age_at_visit"]:
+            if col in df.columns:
+                if col in ["BIRTHDT", "BIRTH_DATE"]:
+                    # BIRTHDT is "MM/YYYY" — extract the year component
+                    birth_year = pd.to_numeric(
+                        df[col].astype(str).str.extract(r"(\d{4})")[0], errors='coerce'
+                    )
+                    out["age"] = (2024 - birth_year).values
+                else:
+                    out["age"] = pd.to_numeric(df[col].values, errors='coerce')
+                break
 
     # Gender: 0=Female, 1=Male, 2=Other
     for col in ["SEX", "GENDER", "GENDER"]:
@@ -257,10 +276,17 @@ def load_target_updrs(raw_dir: Path, visit: str = "V04") -> pd.DataFrame:
     df = _safe_read(fpath)
     df = _filter_visit(df, visit)
 
-    np_cols = [c for c in df.columns if c.startswith("NP3")]
-    if np_cols:
-        df["updrs_iii_target"] = pd.to_numeric(df[np_cols].sum(axis=1), errors='coerce')
+    # Use the official NP3TOT total when present; otherwise sum the 33
+    # individual NP3 items (never both — that doubles the score).
+    if "NP3TOT" in df.columns:
+        df["updrs_iii_target"] = pd.to_numeric(df["NP3TOT"], errors='coerce')
+        np_cols = ["NP3TOT"]
     else:
+        np_cols = [c for c in df.columns
+                   if c.startswith("NP3") and not c.upper().endswith("TOT")]
+    if np_cols and "updrs_iii_target" not in df.columns:
+        df["updrs_iii_target"] = pd.to_numeric(df[np_cols].sum(axis=1), errors='coerce')
+    if "updrs_iii_target" not in df.columns:
         total_cols = [c for c in df.columns if "total" in c.lower()]
         if total_cols:
             df["updrs_iii_target"] = pd.to_numeric(df[total_cols[0]], errors='coerce')
@@ -274,10 +300,18 @@ def load_target_updrs(raw_dir: Path, visit: str = "V04") -> pd.DataFrame:
 
 
 def build_clinical_features(raw_dir: Path, baseline_visit: str = "BL",
-                            target_visit: str = "V04") -> tuple:
+                            target_visit: str = "V04",
+                            target_mode: str = "absolute") -> tuple:
     """
     Master function: assembles all clinical sub-tables into a single feature DataFrame
     and a separate targets DataFrame.
+
+    Args:
+        target_mode: 'absolute' → UPDRS-III score at target_visit;
+                     'delta'    → UPDRS-III change (target_visit − baseline_visit).
+                     Delta targets remove the baseline-score autocorrelation that
+                     otherwise dominates absolute-score prediction, so the model
+                     is evaluated on true progression signal.
 
     Returns:
         features: pd.DataFrame indexed by PATNO (clinical + demographics + MoCA)
@@ -290,6 +324,22 @@ def build_clinical_features(raw_dir: Path, baseline_visit: str = "BL",
     moca = load_moca(raw_dir, visit=baseline_visit)
     status = load_patient_status(raw_dir)
     target_updrs = load_target_updrs(raw_dir, visit=target_visit)
+
+    if target_mode == "delta" and not target_updrs.empty:
+        # Baseline NP3TOT from the same loader (same official-total logic) so
+        # the delta is computed on directly comparable scores. Subjects missing
+        # either visit get NaN and are dropped downstream — never imputed.
+        baseline_updrs = load_target_updrs(raw_dir, visit=baseline_visit)
+        if baseline_updrs.empty:
+            logger.warning("target_mode='delta' requested but baseline UPDRS-III "
+                           "could not be loaded — falling back to absolute target.")
+        else:
+            bl = baseline_updrs["updrs_iii_target"].reindex(target_updrs.index)
+            target_updrs = target_updrs.copy()
+            target_updrs["updrs_iii_target"] = target_updrs["updrs_iii_target"] - bl
+            n_valid = int(target_updrs["updrs_iii_target"].notna().sum())
+            logger.info(f"Delta target (UPDRS-III @ {target_visit} − @ "
+                        f"{baseline_visit}): {n_valid} subjects with both visits.")
 
     # Merge features
     dfs = [df for df in [updrs, demo, moca] if not df.empty]

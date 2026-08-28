@@ -9,8 +9,6 @@ import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from sklearn.preprocessing import StandardScaler
-from sklearn.impute import SimpleImputer
 
 from src.data.clinical_loader import build_clinical_features
 from src.data.mri_pipeline import build_mri_features
@@ -41,13 +39,15 @@ def build_real_dataset(config: dict) -> tuple:
     
     baseline_visit = config.get("target", {}).get("baseline_visit", "BL")
     target_visit = config.get("target", {}).get("regression_visit", "V04")
+    target_mode = config.get("target", {}).get("mode", "absolute")
     n_rois = config.get("mri", {}).get("n_rois", 100)
     use_real_mri = config.get("mri", {}).get("use_real_mri", False)
-    
+
     # ── Step 1: Clinical features + targets ──────────────────────────
     logger.info("=" * 60)
     logger.info("Step 1: Loading Clinical Data...")
-    clinical_df, targets_df = build_clinical_features(raw_dir, baseline_visit, target_visit)
+    clinical_df, targets_df = build_clinical_features(raw_dir, baseline_visit,
+                                                      target_visit, target_mode)
     
     if clinical_df.empty:
         logger.error("Clinical data is empty. Cannot proceed without at least clinical features.")
@@ -117,24 +117,33 @@ def build_real_dataset(config: dict) -> tuple:
     pet_df = pet_df.reindex(patnos).fillna(0)
     genetic_df = genetic_df.reindex(patnos).fillna(0)
     targets_df = targets_df.reindex(patnos)
-    
-    # ── Step 6: Scale clinical features ─────────────────────────────
-    logger.info("Scaling clinical features...")
-    scaler = StandardScaler()
-    imputer = SimpleImputer(strategy='mean')
-    
-    numeric_cols = clinical_df.select_dtypes(include=[np.number]).columns
-    clinical_df[numeric_cols] = imputer.fit_transform(clinical_df[numeric_cols])
-    clinical_df[numeric_cols] = scaler.fit_transform(clinical_df[numeric_cols])
-    
-    # Extract regression target
+
+    # ── Step 6: Resolve targets (NO scaling here) ───────────────────
+    # NOTE: imputation and scaling are deliberately NOT done here.
+    # They are fit on the training split only (src/data/preprocessing.py)
+    # to prevent test-set statistics from leaking into training.
     if "updrs_iii_target" in targets_df.columns:
-        regression_target = targets_df["updrs_iii_target"].fillna(targets_df["updrs_iii_target"].median())
+        regression_target = targets_df["updrs_iii_target"]
     else:
         logger.warning("No regression target found. Using zeros.")
         regression_target = pd.Series(np.zeros(len(patnos)), index=patnos)
-    
+
     diagnosis = targets_df.get("diagnosis", pd.Series(np.zeros(len(patnos)), index=patnos))
+
+    # Drop subjects with no ground-truth target instead of imputing it —
+    # imputed labels are label noise and their statistics leak across splits.
+    has_target = regression_target.notna()
+    n_dropped = int((~has_target).sum())
+    if n_dropped:
+        logger.info(f"Dropping {n_dropped} subjects with missing regression target "
+                    f"(no label imputation — prevents target leakage).")
+        clinical_df = clinical_df.loc[has_target]
+        mri_df = mri_df.loc[has_target]
+        pet_df = pet_df.loc[has_target]
+        genetic_df = genetic_df.loc[has_target]
+        regression_target = regression_target.loc[has_target]
+        diagnosis = diagnosis.loc[has_target]
+        patnos = clinical_df.index.tolist()
     
     logger.info("=" * 60)
     logger.info(f"Dataset Summary:")

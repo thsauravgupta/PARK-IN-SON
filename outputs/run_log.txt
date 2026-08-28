@@ -1,0 +1,276 @@
+2026-08-28 19:00:03,096 | FedPhenoGraft | ======================================================================
+2026-08-28 19:00:03,096 | FedPhenoGraft |   Fed-PhenoGraft: Phenotype-Guided Multimodal PD Prediction
+2026-08-28 19:00:03,097 | FedPhenoGraft | ======================================================================
+2026-08-28 19:00:03,165 | FedPhenoGraft | Regression target: Δ UPDRS-III (BL → Year 2) (mode='delta')
+2026-08-28 19:00:03,165 | FedPhenoGraft | 
+[Phase 1] Loading Raw Data (no global scaling)...
+2026-08-28 19:00:03,165 | src.data.data_builder | ============================================================
+2026-08-28 19:00:03,166 | src.data.data_builder | Step 1: Loading Clinical Data...
+2026-08-28 19:00:03,625 | src.data.clinical_loader | Loaded UPDRS data: 4956 patients, 4 columns
+2026-08-28 19:00:03,676 | src.data.clinical_loader | Loaded demographics: 8622 patients
+2026-08-28 19:00:03,748 | src.data.clinical_loader | Loaded MoCA: 2890 patients
+2026-08-28 19:00:03,788 | src.data.clinical_loader | Loaded patient status: 8679 patients, PD=2152
+2026-08-28 19:00:04,030 | src.data.clinical_loader | Loaded regression target (UPDRS-III @ V04): 3610 patients
+2026-08-28 19:00:04,259 | src.data.clinical_loader | Loaded regression target (UPDRS-III @ BL): 4934 patients
+2026-08-28 19:00:04,260 | src.data.clinical_loader | Delta target (UPDRS-III @ V04 − @ BL): 3472 subjects with both visits.
+2026-08-28 19:00:04,266 | src.data.clinical_loader | Final clinical dataset: 8622 patients, 7 features, 2 targets
+2026-08-28 19:00:04,266 | src.data.data_builder | ============================================================
+2026-08-28 19:00:04,266 | src.data.data_builder | Step 2: Processing MRI Data...
+2026-08-28 19:00:04,266 | src.data.mri_pipeline | MRI set to synthetic fallback mode.
+2026-08-28 19:00:04,287 | src.data.data_builder | ============================================================
+2026-08-28 19:00:04,287 | src.data.data_builder | Step 3: Loading PET/DaTScan Data...
+2026-08-28 19:00:04,338 | src.data.pet_loader | Loaded DaTScan data: 5994 patients, 10 features
+2026-08-28 19:00:04,339 | src.data.data_builder | ============================================================
+2026-08-28 19:00:04,339 | src.data.data_builder | Step 4: Loading Genetic Data...
+2026-08-28 19:00:04,417 | src.data.genetic_loader | Loaded genetic data: 6265 patients, 9 features
+2026-08-28 19:00:04,417 | src.data.data_builder | ============================================================
+2026-08-28 19:00:04,417 | src.data.data_builder | Step 5: Aligning modalities...
+2026-08-28 19:00:04,427 | src.data.data_builder | Dropping 5150 subjects with missing regression target (no label imputation — prevents target leakage).
+2026-08-28 19:00:04,430 | src.data.data_builder | ============================================================
+2026-08-28 19:00:04,430 | src.data.data_builder | Dataset Summary:
+2026-08-28 19:00:04,430 | src.data.data_builder |   Patients:  3472
+2026-08-28 19:00:04,430 | src.data.data_builder |   Clinical:  7 features
+2026-08-28 19:00:04,430 | src.data.data_builder |   MRI:       100 ROIs
+2026-08-28 19:00:04,430 | src.data.data_builder |   PET:       10 features
+2026-08-28 19:00:04,430 | src.data.data_builder |   Genetic:   9 features
+2026-08-28 19:00:04,431 | src.data.data_builder |   MRI missing:     669/3472
+2026-08-28 19:00:04,432 | src.data.data_builder |   PET missing:     194/3472
+2026-08-28 19:00:04,432 | src.data.data_builder |   Genetic missing: 2718/3472
+2026-08-28 19:00:04,433 | FedPhenoGraft | 
+[Phase 2] Subject-Level Train/Val/Test Split...
+2026-08-28 19:00:04,437 | src.data.preprocessing | Subject-level split: train=2430, val=521, test=521 (no subject appears in more than one partition)
+2026-08-28 19:00:04,437 | FedPhenoGraft | 
+[Phase 3] Fitting Preprocessing on Training Subjects Only...
+2026-08-28 19:00:04,460 | FedPhenoGraft | 
+[Phase 4] Baseline Models (per-fold pipelines)...
+2026-08-28 19:00:04 | src.baselines.runner      | INFO     | Running 12 baselines: 5-fold CV on train shape (2951, 126) (preprocessing fit per-fold, models cloned per-fold)...
+2026-08-28 19:00:04,508 | src.baselines.runner | Running 12 baselines: 5-fold CV on train shape (2951, 126) (preprocessing fit per-fold, models cloned per-fold)...
+2026-08-28 19:00:04 | src.baselines.runner      | INFO     |   linear: CV CCC 0.2369 ± 0.0246 | test CCC=0.2037 RMSE=6.956 R2=0.0893
+2026-08-28 19:00:04,860 | src.baselines.runner |   linear: CV CCC 0.2369 ± 0.0246 | test CCC=0.2037 RMSE=6.956 R2=0.0893
+2026-08-28 19:00:05 | src.baselines.runner      | INFO     |   ridge: CV CCC 0.2368 ± 0.0245 | test CCC=0.2036 RMSE=6.956 R2=0.0893
+2026-08-28 19:00:05,009 | src.baselines.runner |   ridge: CV CCC 0.2368 ± 0.0245 | test CCC=0.2036 RMSE=6.956 R2=0.0893
+2026-08-28 19:00:05 | src.baselines.runner      | INFO     |   lasso: CV CCC 0.2195 ± 0.0231 | test CCC=0.1833 RMSE=6.915 R2=0.1000
+2026-08-28 19:00:05,252 | src.baselines.runner |   lasso: CV CCC 0.2195 ± 0.0231 | test CCC=0.1833 RMSE=6.915 R2=0.1000
+2026-08-28 19:00:05 | src.baselines.runner      | INFO     |   elastic_net: CV CCC 0.2104 ± 0.0224 | test CCC=0.1776 RMSE=6.925 R2=0.0974
+2026-08-28 19:00:05,430 | src.baselines.runner |   elastic_net: CV CCC 0.2104 ± 0.0224 | test CCC=0.1776 RMSE=6.925 R2=0.0974
+2026-08-28 19:00:08 | src.baselines.runner      | INFO     |   svm: CV CCC 0.0603 ± 0.0074 | test CCC=0.0552 RMSE=7.163 R2=0.0342
+2026-08-28 19:00:08,198 | src.baselines.runner |   svm: CV CCC 0.0603 ± 0.0074 | test CCC=0.0552 RMSE=7.163 R2=0.0342
+2026-08-28 19:00:11 | src.baselines.runner      | INFO     |   knn: CV CCC 0.0783 ± 0.0206 | test CCC=0.0464 RMSE=7.396 R2=-0.0296
+2026-08-28 19:00:11,672 | src.baselines.runner |   knn: CV CCC 0.0783 ± 0.0206 | test CCC=0.0464 RMSE=7.396 R2=-0.0296
+2026-08-28 19:00:14 | src.baselines.runner      | INFO     |   random_forest: CV CCC 0.0993 ± 0.0151 | test CCC=0.0821 RMSE=7.066 R2=0.0603
+2026-08-28 19:00:14,585 | src.baselines.runner |   random_forest: CV CCC 0.0993 ± 0.0151 | test CCC=0.0821 RMSE=7.066 R2=0.0603
+2026-08-28 19:00:16 | src.baselines.runner      | INFO     |   extra_trees: CV CCC 0.0635 ± 0.0105 | test CCC=0.0511 RMSE=7.138 R2=0.0410
+2026-08-28 19:00:16,386 | src.baselines.runner |   extra_trees: CV CCC 0.0635 ± 0.0105 | test CCC=0.0511 RMSE=7.138 R2=0.0410
+2026-08-28 19:01:41 | src.baselines.runner      | INFO     |   gradient_boosting: CV CCC 0.2322 ± 0.0262 | test CCC=0.1911 RMSE=7.007 R2=0.0758
+2026-08-28 19:01:41,751 | src.baselines.runner |   gradient_boosting: CV CCC 0.2322 ± 0.0262 | test CCC=0.1911 RMSE=7.007 R2=0.0758
+2026-08-28 19:01:45 | src.baselines.runner      | INFO     |   mlp: CV CCC 0.1400 ± 0.0751 | test CCC=0.1924 RMSE=7.098 R2=0.0518
+2026-08-28 19:01:45,701 | src.baselines.runner |   mlp: CV CCC 0.1400 ± 0.0751 | test CCC=0.1924 RMSE=7.098 R2=0.0518
+2026-08-28 19:01:48 | src.baselines.runner      | INFO     |   xgboost: CV CCC 0.2418 ± 0.0232 | test CCC=0.2002 RMSE=7.010 R2=0.0751
+2026-08-28 19:01:48,916 | src.baselines.runner |   xgboost: CV CCC 0.2418 ± 0.0232 | test CCC=0.2002 RMSE=7.010 R2=0.0751
+C:\Users\Aarin Bhatta\AppData\Roaming\Python\Python314\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+C:\Users\Aarin Bhatta\AppData\Roaming\Python\Python314\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+C:\Users\Aarin Bhatta\AppData\Roaming\Python\Python314\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+C:\Users\Aarin Bhatta\AppData\Roaming\Python\Python314\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+C:\Users\Aarin Bhatta\AppData\Roaming\Python\Python314\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+C:\Users\Aarin Bhatta\AppData\Roaming\Python\Python314\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2026-08-28 19:01:52 | src.baselines.runner      | INFO     |   lightgbm: CV CCC 0.2253 ± 0.0213 | test CCC=0.2300 RMSE=6.941 R2=0.0931
+2026-08-28 19:01:52,501 | src.baselines.runner |   lightgbm: CV CCC 0.2253 ± 0.0213 | test CCC=0.2300 RMSE=6.941 R2=0.0931
+2026-08-28 19:01:52,503 | FedPhenoGraft | 
+[Phase 5] Federated Training (FedAvg, partition='dirichlet', 3 seeds)...
+2026-08-28 19:01:52,503 | FedPhenoGraft | --- Seed run 1/3 (seed=42) ---
+2026-08-28 19:01:52,507 | FedPhenoGraft |   Client sizes (seed 42): [979, 703, 148, 600]
+2026-08-28 19:01:57,804 | src.federated.fedavg_orchestrator | Round 1/30 | Val CCC: 0.0998 | Val RMSE: 6.670 | Val AUC: 0.9758 | Train CCC: 0.0990 | Gap: -0.0008
+2026-08-28 19:02:00,887 | src.federated.fedavg_orchestrator | Round 2/30 | Val CCC: 0.1984 | Val RMSE: 6.451 | Val AUC: 0.9829 | Train CCC: 0.2103 | Gap: +0.0119
+2026-08-28 19:02:03,732 | src.federated.fedavg_orchestrator | Round 3/30 | Val CCC: 0.2588 | Val RMSE: 6.341 | Val AUC: 0.9826 | Train CCC: 0.2903 | Gap: +0.0314
+2026-08-28 19:02:06,775 | src.federated.fedavg_orchestrator | Round 4/30 | Val CCC: 0.2772 | Val RMSE: 6.358 | Val AUC: 0.9830 | Train CCC: 0.3497 | Gap: +0.0725
+2026-08-28 19:02:09,706 | src.federated.fedavg_orchestrator | Round 5/30 | Val CCC: 0.3093 | Val RMSE: 6.373 | Val AUC: 0.9825 | Train CCC: 0.4154 | Gap: +0.1062
+2026-08-28 19:02:12,650 | src.federated.fedavg_orchestrator | Round 6/30 | Val CCC: 0.3304 | Val RMSE: 6.442 | Val AUC: 0.9823 | Train CCC: 0.4690 | Gap: +0.1386
+2026-08-28 19:02:15,536 | src.federated.fedavg_orchestrator | Round 7/30 | Val CCC: 0.3141 | Val RMSE: 6.500 | Val AUC: 0.9807 | Train CCC: 0.4955 | Gap: +0.1813
+2026-08-28 19:02:18,419 | src.federated.fedavg_orchestrator | Round 8/30 | Val CCC: 0.3093 | Val RMSE: 6.525 | Val AUC: 0.9814 | Train CCC: 0.5120 | Gap: +0.2027
+2026-08-28 19:02:21,378 | src.federated.fedavg_orchestrator | Round 9/30 | Val CCC: 0.3302 | Val RMSE: 6.475 | Val AUC: 0.9819 | Train CCC: 0.5444 | Gap: +0.2142
+2026-08-28 19:02:24,189 | src.federated.fedavg_orchestrator | Round 10/30 | Val CCC: 0.3393 | Val RMSE: 6.505 | Val AUC: 0.9820 | Train CCC: 0.5735 | Gap: +0.2343
+2026-08-28 19:02:27,162 | src.federated.fedavg_orchestrator | Round 11/30 | Val CCC: 0.3117 | Val RMSE: 6.570 | Val AUC: 0.9824 | Train CCC: 0.5814 | Gap: +0.2697
+2026-08-28 19:02:29,985 | src.federated.fedavg_orchestrator | Round 12/30 | Val CCC: 0.3133 | Val RMSE: 6.715 | Val AUC: 0.9822 | Train CCC: 0.6182 | Gap: +0.3050
+2026-08-28 19:02:33,210 | src.federated.fedavg_orchestrator | Round 13/30 | Val CCC: 0.2907 | Val RMSE: 6.732 | Val AUC: 0.9838 | Train CCC: 0.6205 | Gap: +0.3299
+2026-08-28 19:02:36,338 | src.federated.fedavg_orchestrator | Round 14/30 | Val CCC: 0.3051 | Val RMSE: 6.713 | Val AUC: 0.9845 | Train CCC: 0.6325 | Gap: +0.3273
+2026-08-28 19:02:39,755 | src.federated.fedavg_orchestrator | Round 15/30 | Val CCC: 0.3202 | Val RMSE: 6.714 | Val AUC: 0.9826 | Train CCC: 0.6566 | Gap: +0.3363
+2026-08-28 19:02:39,756 | src.federated.fedavg_orchestrator | Early stopping at round 15 (no val-CCC improvement for 5 rounds). Restoring best weights from round 10.
+2026-08-28 19:02:39,757 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.3393 (round 10).
+2026-08-28 19:02:39,907 | FedPhenoGraft | --- Seed run 2/3 (seed=143) ---
+2026-08-28 19:02:39,966 | FedPhenoGraft |   Client sizes (seed 143): [326, 491, 1563, 50]
+2026-08-28 19:02:43,139 | src.federated.fedavg_orchestrator | Round 1/30 | Val CCC: 0.0964 | Val RMSE: 6.683 | Val AUC: 0.9611 | Train CCC: 0.0981 | Gap: +0.0017
+2026-08-28 19:02:46,190 | src.federated.fedavg_orchestrator | Round 2/30 | Val CCC: 0.2034 | Val RMSE: 6.572 | Val AUC: 0.9722 | Train CCC: 0.2064 | Gap: +0.0030
+2026-08-28 19:02:49,391 | src.federated.fedavg_orchestrator | Round 3/30 | Val CCC: 0.2554 | Val RMSE: 6.461 | Val AUC: 0.9735 | Train CCC: 0.2528 | Gap: -0.0025
+2026-08-28 19:02:52,390 | src.federated.fedavg_orchestrator | Round 4/30 | Val CCC: 0.2964 | Val RMSE: 6.368 | Val AUC: 0.9722 | Train CCC: 0.3048 | Gap: +0.0084
+2026-08-28 19:02:55,540 | src.federated.fedavg_orchestrator | Round 5/30 | Val CCC: 0.3118 | Val RMSE: 6.342 | Val AUC: 0.9714 | Train CCC: 0.3332 | Gap: +0.0214
+2026-08-28 19:02:58,819 | src.federated.fedavg_orchestrator | Round 6/30 | Val CCC: 0.3265 | Val RMSE: 6.295 | Val AUC: 0.9734 | Train CCC: 0.3486 | Gap: +0.0220
+2026-08-28 19:03:01,975 | src.federated.fedavg_orchestrator | Round 7/30 | Val CCC: 0.3450 | Val RMSE: 6.331 | Val AUC: 0.9747 | Train CCC: 0.3959 | Gap: +0.0509
+2026-08-28 19:03:04,962 | src.federated.fedavg_orchestrator | Round 8/30 | Val CCC: 0.3588 | Val RMSE: 6.347 | Val AUC: 0.9770 | Train CCC: 0.4192 | Gap: +0.0604
+2026-08-28 19:03:07,937 | src.federated.fedavg_orchestrator | Round 9/30 | Val CCC: 0.3282 | Val RMSE: 6.354 | Val AUC: 0.9763 | Train CCC: 0.4256 | Gap: +0.0974
+2026-08-28 19:03:11,101 | src.federated.fedavg_orchestrator | Round 10/30 | Val CCC: 0.3253 | Val RMSE: 6.456 | Val AUC: 0.9759 | Train CCC: 0.4442 | Gap: +0.1189
+2026-08-28 19:03:14,003 | src.federated.fedavg_orchestrator | Round 11/30 | Val CCC: 0.3201 | Val RMSE: 6.512 | Val AUC: 0.9742 | Train CCC: 0.4616 | Gap: +0.1415
+2026-08-28 19:03:16,990 | src.federated.fedavg_orchestrator | Round 12/30 | Val CCC: 0.3584 | Val RMSE: 6.455 | Val AUC: 0.9725 | Train CCC: 0.4984 | Gap: +0.1400
+2026-08-28 19:03:20,120 | src.federated.fedavg_orchestrator | Round 13/30 | Val CCC: 0.3367 | Val RMSE: 6.473 | Val AUC: 0.9737 | Train CCC: 0.4942 | Gap: +0.1576
+2026-08-28 19:03:20,120 | src.federated.fedavg_orchestrator | Early stopping at round 13 (no val-CCC improvement for 5 rounds). Restoring best weights from round 8.
+2026-08-28 19:03:20,121 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.3588 (round 8).
+2026-08-28 19:03:20,265 | FedPhenoGraft | --- Seed run 3/3 (seed=244) ---
+2026-08-28 19:03:20,267 | FedPhenoGraft |   Client sizes (seed 244): [1312, 481, 46, 591]
+2026-08-28 19:03:23,287 | src.federated.fedavg_orchestrator | Round 1/30 | Val CCC: 0.0996 | Val RMSE: 6.669 | Val AUC: 0.9666 | Train CCC: 0.0904 | Gap: -0.0092
+2026-08-28 19:03:26,204 | src.federated.fedavg_orchestrator | Round 2/30 | Val CCC: 0.2071 | Val RMSE: 6.478 | Val AUC: 0.9784 | Train CCC: 0.1973 | Gap: -0.0099
+2026-08-28 19:03:29,440 | src.federated.fedavg_orchestrator | Round 3/30 | Val CCC: 0.2601 | Val RMSE: 6.354 | Val AUC: 0.9813 | Train CCC: 0.2590 | Gap: -0.0011
+2026-08-28 19:03:32,553 | src.federated.fedavg_orchestrator | Round 4/30 | Val CCC: 0.3112 | Val RMSE: 6.310 | Val AUC: 0.9816 | Train CCC: 0.3358 | Gap: +0.0247
+2026-08-28 19:03:35,689 | src.federated.fedavg_orchestrator | Round 5/30 | Val CCC: 0.3276 | Val RMSE: 6.294 | Val AUC: 0.9826 | Train CCC: 0.3740 | Gap: +0.0464
+2026-08-28 19:03:38,832 | src.federated.fedavg_orchestrator | Round 6/30 | Val CCC: 0.3309 | Val RMSE: 6.355 | Val AUC: 0.9833 | Train CCC: 0.4072 | Gap: +0.0762
+2026-08-28 19:03:42,058 | src.federated.fedavg_orchestrator | Round 7/30 | Val CCC: 0.3309 | Val RMSE: 6.427 | Val AUC: 0.9830 | Train CCC: 0.4344 | Gap: +0.1034
+2026-08-28 19:03:44,978 | src.federated.fedavg_orchestrator | Round 8/30 | Val CCC: 0.3367 | Val RMSE: 6.449 | Val AUC: 0.9839 | Train CCC: 0.4655 | Gap: +0.1288
+2026-08-28 19:03:48,125 | src.federated.fedavg_orchestrator | Round 9/30 | Val CCC: 0.3540 | Val RMSE: 6.449 | Val AUC: 0.9847 | Train CCC: 0.4888 | Gap: +0.1349
+2026-08-28 19:03:51,427 | src.federated.fedavg_orchestrator | Round 10/30 | Val CCC: 0.3315 | Val RMSE: 6.418 | Val AUC: 0.9849 | Train CCC: 0.4906 | Gap: +0.1591
+2026-08-28 19:03:54,603 | src.federated.fedavg_orchestrator | Round 11/30 | Val CCC: 0.3284 | Val RMSE: 6.488 | Val AUC: 0.9846 | Train CCC: 0.5056 | Gap: +0.1772
+2026-08-28 19:03:57,666 | src.federated.fedavg_orchestrator | Round 12/30 | Val CCC: 0.3135 | Val RMSE: 6.562 | Val AUC: 0.9848 | Train CCC: 0.5380 | Gap: +0.2245
+2026-08-28 19:04:00,712 | src.federated.fedavg_orchestrator | Round 13/30 | Val CCC: 0.3094 | Val RMSE: 6.695 | Val AUC: 0.9854 | Train CCC: 0.5740 | Gap: +0.2646
+2026-08-28 19:04:03,965 | src.federated.fedavg_orchestrator | Round 14/30 | Val CCC: 0.3149 | Val RMSE: 6.527 | Val AUC: 0.9854 | Train CCC: 0.5732 | Gap: +0.2583
+2026-08-28 19:04:03,966 | src.federated.fedavg_orchestrator | Early stopping at round 14 (no val-CCC improvement for 5 rounds). Restoring best weights from round 9.
+2026-08-28 19:04:03,967 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.3540 (round 9).
+2026-08-28 19:04:04,118 | FedPhenoGraft |   Across 3 seeds — test CCC 0.1594 ± 0.0220 (primary model = best-val seed 143)
+2026-08-28 19:04:04,118 | FedPhenoGraft | 
+[Phase 6] Final Held-Out Test Evaluation + Statistics...
+2026-08-28 19:04:04,833 | FedPhenoGraft |   Fed-PhenoGraft test CCC 0.1894 [95% CI 0.1076, 0.2655]
+2026-08-28 19:04:05,072 | FedPhenoGraft |   Paired bootstrap vs best baseline (lightgbm): ΔCCC -0.0406, p = 0.8570 (not significant at α=0.05)
+2026-08-28 19:04:05,072 | FedPhenoGraft |   Train CCC: 0.4192 | Val CCC: 0.3588 | Test CCC: 0.1894
+2026-08-28 19:04:05,072 | FedPhenoGraft |   Test RMSE: 7.304 | Test MAE: 4.911
+2026-08-28 19:04:05,072 | FedPhenoGraft |   PD vs HC — Test AUC: 0.9759 | Accuracy: 0.9060
+2026-08-28 19:04:05,072 | FedPhenoGraft |   Train-val gap = +0.060 → no over/underfitting red flags.
+2026-08-28 19:04:05,072 | FedPhenoGraft | 
+[Phase 7] Ablation Suite (each variant retrained)...
+2026-08-28 19:04:05,072 | src.evaluation.ablation | [Ablation] no_mri ...
+2026-08-28 19:04:07,685 | src.federated.fedavg_orchestrator | Round 1/20 | Val CCC: 0.0982 | Val RMSE: 6.684 | Val AUC: 0.9757
+2026-08-28 19:04:10,352 | src.federated.fedavg_orchestrator | Round 2/20 | Val CCC: 0.1976 | Val RMSE: 6.459 | Val AUC: 0.9821
+2026-08-28 19:04:13,339 | src.federated.fedavg_orchestrator | Round 3/20 | Val CCC: 0.2396 | Val RMSE: 6.376 | Val AUC: 0.9818
+2026-08-28 19:04:15,956 | src.federated.fedavg_orchestrator | Round 4/20 | Val CCC: 0.2684 | Val RMSE: 6.347 | Val AUC: 0.9816
+2026-08-28 19:04:18,656 | src.federated.fedavg_orchestrator | Round 5/20 | Val CCC: 0.2651 | Val RMSE: 6.338 | Val AUC: 0.9828
+2026-08-28 19:04:21,428 | src.federated.fedavg_orchestrator | Round 6/20 | Val CCC: 0.2747 | Val RMSE: 6.317 | Val AUC: 0.9838
+2026-08-28 19:04:24,108 | src.federated.fedavg_orchestrator | Round 7/20 | Val CCC: 0.2772 | Val RMSE: 6.321 | Val AUC: 0.9832
+2026-08-28 19:04:26,710 | src.federated.fedavg_orchestrator | Round 8/20 | Val CCC: 0.2947 | Val RMSE: 6.289 | Val AUC: 0.9837
+2026-08-28 19:04:29,510 | src.federated.fedavg_orchestrator | Round 9/20 | Val CCC: 0.3039 | Val RMSE: 6.284 | Val AUC: 0.9837
+2026-08-28 19:04:32,193 | src.federated.fedavg_orchestrator | Round 10/20 | Val CCC: 0.2995 | Val RMSE: 6.268 | Val AUC: 0.9834
+2026-08-28 19:04:35,009 | src.federated.fedavg_orchestrator | Round 11/20 | Val CCC: 0.3051 | Val RMSE: 6.268 | Val AUC: 0.9840
+2026-08-28 19:04:37,655 | src.federated.fedavg_orchestrator | Round 12/20 | Val CCC: 0.3013 | Val RMSE: 6.250 | Val AUC: 0.9845
+2026-08-28 19:04:40,597 | src.federated.fedavg_orchestrator | Round 13/20 | Val CCC: 0.3178 | Val RMSE: 6.237 | Val AUC: 0.9850
+2026-08-28 19:04:43,430 | src.federated.fedavg_orchestrator | Round 14/20 | Val CCC: 0.2917 | Val RMSE: 6.256 | Val AUC: 0.9852
+2026-08-28 19:04:46,065 | src.federated.fedavg_orchestrator | Round 15/20 | Val CCC: 0.3193 | Val RMSE: 6.226 | Val AUC: 0.9844
+2026-08-28 19:04:48,734 | src.federated.fedavg_orchestrator | Round 16/20 | Val CCC: 0.3230 | Val RMSE: 6.223 | Val AUC: 0.9854
+2026-08-28 19:04:51,519 | src.federated.fedavg_orchestrator | Round 17/20 | Val CCC: 0.3028 | Val RMSE: 6.249 | Val AUC: 0.9853
+2026-08-28 19:04:54,370 | src.federated.fedavg_orchestrator | Round 18/20 | Val CCC: 0.3132 | Val RMSE: 6.228 | Val AUC: 0.9846
+2026-08-28 19:04:57,119 | src.federated.fedavg_orchestrator | Round 19/20 | Val CCC: 0.3228 | Val RMSE: 6.221 | Val AUC: 0.9854
+2026-08-28 19:04:57,120 | src.federated.fedavg_orchestrator | Early stopping at round 19 (no val-CCC improvement for 3 rounds). Restoring best weights from round 16.
+2026-08-28 19:04:57,120 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.3230 (round 16).
+2026-08-28 19:04:57,263 | src.evaluation.ablation | [Ablation] no_mri: val CCC 0.3230 | test CCC 0.2098
+2026-08-28 19:04:57,264 | src.evaluation.ablation | [Ablation] no_pet ...
+2026-08-28 19:04:59,903 | src.federated.fedavg_orchestrator | Round 1/20 | Val CCC: 0.0840 | Val RMSE: 6.732 | Val AUC: 0.9567
+2026-08-28 19:05:02,750 | src.federated.fedavg_orchestrator | Round 2/20 | Val CCC: 0.1641 | Val RMSE: 6.543 | Val AUC: 0.9682
+2026-08-28 19:05:05,379 | src.federated.fedavg_orchestrator | Round 3/20 | Val CCC: 0.2275 | Val RMSE: 6.445 | Val AUC: 0.9681
+2026-08-28 19:05:08,125 | src.federated.fedavg_orchestrator | Round 4/20 | Val CCC: 0.2617 | Val RMSE: 6.389 | Val AUC: 0.9670
+2026-08-28 19:05:10,828 | src.federated.fedavg_orchestrator | Round 5/20 | Val CCC: 0.2580 | Val RMSE: 6.450 | Val AUC: 0.9654
+2026-08-28 19:05:13,640 | src.federated.fedavg_orchestrator | Round 6/20 | Val CCC: 0.3055 | Val RMSE: 6.499 | Val AUC: 0.9663
+2026-08-28 19:05:16,207 | src.federated.fedavg_orchestrator | Round 7/20 | Val CCC: 0.2882 | Val RMSE: 6.560 | Val AUC: 0.9676
+2026-08-28 19:05:18,845 | src.federated.fedavg_orchestrator | Round 8/20 | Val CCC: 0.2867 | Val RMSE: 6.679 | Val AUC: 0.9679
+2026-08-28 19:05:21,445 | src.federated.fedavg_orchestrator | Round 9/20 | Val CCC: 0.2699 | Val RMSE: 6.711 | Val AUC: 0.9680
+2026-08-28 19:05:21,445 | src.federated.fedavg_orchestrator | Early stopping at round 9 (no val-CCC improvement for 3 rounds). Restoring best weights from round 6.
+2026-08-28 19:05:21,446 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.3055 (round 6).
+2026-08-28 19:05:21,600 | src.evaluation.ablation | [Ablation] no_pet: val CCC 0.3055 | test CCC 0.1219
+2026-08-28 19:05:21,600 | src.evaluation.ablation | [Ablation] no_genetic ...
+2026-08-28 19:05:24,305 | src.federated.fedavg_orchestrator | Round 1/20 | Val CCC: 0.0998 | Val RMSE: 6.670 | Val AUC: 0.9758
+2026-08-28 19:05:27,013 | src.federated.fedavg_orchestrator | Round 2/20 | Val CCC: 0.2049 | Val RMSE: 6.432 | Val AUC: 0.9827
+2026-08-28 19:05:29,788 | src.federated.fedavg_orchestrator | Round 3/20 | Val CCC: 0.2674 | Val RMSE: 6.331 | Val AUC: 0.9824
+2026-08-28 19:05:32,371 | src.federated.fedavg_orchestrator | Round 4/20 | Val CCC: 0.2957 | Val RMSE: 6.318 | Val AUC: 0.9815
+2026-08-28 19:05:35,119 | src.federated.fedavg_orchestrator | Round 5/20 | Val CCC: 0.2892 | Val RMSE: 6.365 | Val AUC: 0.9819
+2026-08-28 19:05:37,901 | src.federated.fedavg_orchestrator | Round 6/20 | Val CCC: 0.3275 | Val RMSE: 6.447 | Val AUC: 0.9827
+2026-08-28 19:05:40,725 | src.federated.fedavg_orchestrator | Round 7/20 | Val CCC: 0.3184 | Val RMSE: 6.477 | Val AUC: 0.9821
+2026-08-28 19:05:43,359 | src.federated.fedavg_orchestrator | Round 8/20 | Val CCC: 0.3268 | Val RMSE: 6.529 | Val AUC: 0.9824
+2026-08-28 19:05:46,063 | src.federated.fedavg_orchestrator | Round 9/20 | Val CCC: 0.3169 | Val RMSE: 6.548 | Val AUC: 0.9832
+2026-08-28 19:05:46,063 | src.federated.fedavg_orchestrator | Early stopping at round 9 (no val-CCC improvement for 3 rounds). Restoring best weights from round 6.
+2026-08-28 19:05:46,064 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.3275 (round 6).
+2026-08-28 19:05:46,187 | src.evaluation.ablation | [Ablation] no_genetic: val CCC 0.3275 | test CCC 0.1546
+2026-08-28 19:05:46,188 | src.evaluation.ablation | [Ablation] clinical_only ...
+2026-08-28 19:05:48,897 | src.federated.fedavg_orchestrator | Round 1/20 | Val CCC: 0.0821 | Val RMSE: 6.739 | Val AUC: 0.9522
+2026-08-28 19:05:51,457 | src.federated.fedavg_orchestrator | Round 2/20 | Val CCC: 0.1514 | Val RMSE: 6.576 | Val AUC: 0.9650
+2026-08-28 19:05:54,073 | src.federated.fedavg_orchestrator | Round 3/20 | Val CCC: 0.1979 | Val RMSE: 6.476 | Val AUC: 0.9683
+2026-08-28 19:05:56,870 | src.federated.fedavg_orchestrator | Round 4/20 | Val CCC: 0.2285 | Val RMSE: 6.397 | Val AUC: 0.9709
+2026-08-28 19:05:59,628 | src.federated.fedavg_orchestrator | Round 5/20 | Val CCC: 0.2266 | Val RMSE: 6.386 | Val AUC: 0.9719
+2026-08-28 19:06:02,290 | src.federated.fedavg_orchestrator | Round 6/20 | Val CCC: 0.2413 | Val RMSE: 6.350 | Val AUC: 0.9722
+2026-08-28 19:06:04,927 | src.federated.fedavg_orchestrator | Round 7/20 | Val CCC: 0.2546 | Val RMSE: 6.343 | Val AUC: 0.9721
+2026-08-28 19:06:07,594 | src.federated.fedavg_orchestrator | Round 8/20 | Val CCC: 0.2676 | Val RMSE: 6.313 | Val AUC: 0.9709
+2026-08-28 19:06:10,296 | src.federated.fedavg_orchestrator | Round 9/20 | Val CCC: 0.2792 | Val RMSE: 6.316 | Val AUC: 0.9711
+2026-08-28 19:06:13,021 | src.federated.fedavg_orchestrator | Round 10/20 | Val CCC: 0.2754 | Val RMSE: 6.292 | Val AUC: 0.9716
+2026-08-28 19:06:15,822 | src.federated.fedavg_orchestrator | Round 11/20 | Val CCC: 0.2813 | Val RMSE: 6.291 | Val AUC: 0.9707
+2026-08-28 19:06:18,482 | src.federated.fedavg_orchestrator | Round 12/20 | Val CCC: 0.2747 | Val RMSE: 6.277 | Val AUC: 0.9714
+2026-08-28 19:06:21,163 | src.federated.fedavg_orchestrator | Round 13/20 | Val CCC: 0.2937 | Val RMSE: 6.261 | Val AUC: 0.9726
+2026-08-28 19:06:23,782 | src.federated.fedavg_orchestrator | Round 14/20 | Val CCC: 0.2705 | Val RMSE: 6.279 | Val AUC: 0.9721
+2026-08-28 19:06:26,448 | src.federated.fedavg_orchestrator | Round 15/20 | Val CCC: 0.2863 | Val RMSE: 6.274 | Val AUC: 0.9726
+2026-08-28 19:06:29,067 | src.federated.fedavg_orchestrator | Round 16/20 | Val CCC: 0.2902 | Val RMSE: 6.258 | Val AUC: 0.9717
+2026-08-28 19:06:29,067 | src.federated.fedavg_orchestrator | Early stopping at round 16 (no val-CCC improvement for 3 rounds). Restoring best weights from round 13.
+2026-08-28 19:06:29,068 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.2937 (round 13).
+2026-08-28 19:06:29,245 | src.evaluation.ablation | [Ablation] clinical_only: val CCC 0.2937 | test CCC 0.1994
+2026-08-28 19:06:29,245 | src.evaluation.ablation | [Ablation] no_attention ...
+2026-08-28 19:06:31,128 | src.federated.fedavg_orchestrator | Round 1/20 | Val CCC: 0.0234 | Val RMSE: 6.883 | Val AUC: 0.9628
+2026-08-28 19:06:33,046 | src.federated.fedavg_orchestrator | Round 2/20 | Val CCC: 0.0805 | Val RMSE: 6.723 | Val AUC: 0.9742
+2026-08-28 19:06:34,931 | src.federated.fedavg_orchestrator | Round 3/20 | Val CCC: 0.1508 | Val RMSE: 6.561 | Val AUC: 0.9760
+2026-08-28 19:06:36,818 | src.federated.fedavg_orchestrator | Round 4/20 | Val CCC: 0.2132 | Val RMSE: 6.440 | Val AUC: 0.9755
+2026-08-28 19:06:38,662 | src.federated.fedavg_orchestrator | Round 5/20 | Val CCC: 0.2422 | Val RMSE: 6.420 | Val AUC: 0.9763
+2026-08-28 19:06:40,494 | src.federated.fedavg_orchestrator | Round 6/20 | Val CCC: 0.2506 | Val RMSE: 6.433 | Val AUC: 0.9762
+2026-08-28 19:06:42,479 | src.federated.fedavg_orchestrator | Round 7/20 | Val CCC: 0.2596 | Val RMSE: 6.453 | Val AUC: 0.9774
+2026-08-28 19:06:44,384 | src.federated.fedavg_orchestrator | Round 8/20 | Val CCC: 0.2638 | Val RMSE: 6.502 | Val AUC: 0.9787
+2026-08-28 19:06:46,351 | src.federated.fedavg_orchestrator | Round 9/20 | Val CCC: 0.2605 | Val RMSE: 6.535 | Val AUC: 0.9789
+2026-08-28 19:06:48,423 | src.federated.fedavg_orchestrator | Round 10/20 | Val CCC: 0.2662 | Val RMSE: 6.538 | Val AUC: 0.9793
+2026-08-28 19:06:50,299 | src.federated.fedavg_orchestrator | Round 11/20 | Val CCC: 0.2816 | Val RMSE: 6.553 | Val AUC: 0.9797
+2026-08-28 19:06:52,157 | src.federated.fedavg_orchestrator | Round 12/20 | Val CCC: 0.2810 | Val RMSE: 6.560 | Val AUC: 0.9795
+2026-08-28 19:06:54,258 | src.federated.fedavg_orchestrator | Round 13/20 | Val CCC: 0.2831 | Val RMSE: 6.593 | Val AUC: 0.9803
+2026-08-28 19:06:56,217 | src.federated.fedavg_orchestrator | Round 14/20 | Val CCC: 0.2738 | Val RMSE: 6.600 | Val AUC: 0.9809
+2026-08-28 19:06:58,177 | src.federated.fedavg_orchestrator | Round 15/20 | Val CCC: 0.2751 | Val RMSE: 6.600 | Val AUC: 0.9808
+2026-08-28 19:07:00,272 | src.federated.fedavg_orchestrator | Round 16/20 | Val CCC: 0.2810 | Val RMSE: 6.604 | Val AUC: 0.9804
+2026-08-28 19:07:00,272 | src.federated.fedavg_orchestrator | Early stopping at round 16 (no val-CCC improvement for 3 rounds). Restoring best weights from round 13.
+2026-08-28 19:07:00,272 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.2831 (round 13).
+2026-08-28 19:07:00,438 | src.evaluation.ablation | [Ablation] no_attention: val CCC 0.2831 | test CCC 0.1694
+2026-08-28 19:07:00,439 | src.evaluation.ablation | [Ablation] no_hsic ...
+2026-08-28 19:07:03,259 | src.federated.fedavg_orchestrator | Round 1/20 | Val CCC: 0.0999 | Val RMSE: 6.670 | Val AUC: 0.9758
+2026-08-28 19:07:06,012 | src.federated.fedavg_orchestrator | Round 2/20 | Val CCC: 0.2053 | Val RMSE: 6.431 | Val AUC: 0.9827
+2026-08-28 19:07:08,794 | src.federated.fedavg_orchestrator | Round 3/20 | Val CCC: 0.2668 | Val RMSE: 6.332 | Val AUC: 0.9824
+2026-08-28 19:07:11,541 | src.federated.fedavg_orchestrator | Round 4/20 | Val CCC: 0.2954 | Val RMSE: 6.319 | Val AUC: 0.9814
+2026-08-28 19:07:14,303 | src.federated.fedavg_orchestrator | Round 5/20 | Val CCC: 0.2892 | Val RMSE: 6.364 | Val AUC: 0.9820
+2026-08-28 19:07:16,937 | src.federated.fedavg_orchestrator | Round 6/20 | Val CCC: 0.3285 | Val RMSE: 6.442 | Val AUC: 0.9827
+2026-08-28 19:07:19,702 | src.federated.fedavg_orchestrator | Round 7/20 | Val CCC: 0.3176 | Val RMSE: 6.479 | Val AUC: 0.9821
+2026-08-28 19:07:22,352 | src.federated.fedavg_orchestrator | Round 8/20 | Val CCC: 0.3259 | Val RMSE: 6.533 | Val AUC: 0.9823
+2026-08-28 19:07:25,069 | src.federated.fedavg_orchestrator | Round 9/20 | Val CCC: 0.3179 | Val RMSE: 6.542 | Val AUC: 0.9833
+2026-08-28 19:07:25,069 | src.federated.fedavg_orchestrator | Early stopping at round 9 (no val-CCC improvement for 3 rounds). Restoring best weights from round 6.
+2026-08-28 19:07:25,070 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.3285 (round 6).
+2026-08-28 19:07:25,242 | src.evaluation.ablation | [Ablation] no_hsic: val CCC 0.3285 | test CCC 0.1547
+2026-08-28 19:07:25,242 | src.evaluation.ablation | [Ablation] centralized ...
+2026-08-28 19:07:28,188 | src.federated.fedavg_orchestrator | Round 1/20 | Val CCC: 0.2467 | Val RMSE: 6.379 | Val AUC: 0.9825
+2026-08-28 19:07:31,019 | src.federated.fedavg_orchestrator | Round 2/20 | Val CCC: 0.3074 | Val RMSE: 6.304 | Val AUC: 0.9843
+2026-08-28 19:07:33,861 | src.federated.fedavg_orchestrator | Round 3/20 | Val CCC: 0.3105 | Val RMSE: 6.406 | Val AUC: 0.9828
+2026-08-28 19:07:36,733 | src.federated.fedavg_orchestrator | Round 4/20 | Val CCC: 0.3292 | Val RMSE: 6.514 | Val AUC: 0.9825
+2026-08-28 19:07:39,469 | src.federated.fedavg_orchestrator | Round 5/20 | Val CCC: 0.3318 | Val RMSE: 6.451 | Val AUC: 0.9845
+2026-08-28 19:07:42,627 | src.federated.fedavg_orchestrator | Round 6/20 | Val CCC: 0.3216 | Val RMSE: 6.749 | Val AUC: 0.9838
+2026-08-28 19:07:45,489 | src.federated.fedavg_orchestrator | Round 7/20 | Val CCC: 0.2723 | Val RMSE: 6.739 | Val AUC: 0.9848
+2026-08-28 19:07:48,522 | src.federated.fedavg_orchestrator | Round 8/20 | Val CCC: 0.2713 | Val RMSE: 6.717 | Val AUC: 0.9859
+2026-08-28 19:07:48,523 | src.federated.fedavg_orchestrator | Early stopping at round 8 (no val-CCC improvement for 3 rounds). Restoring best weights from round 5.
+2026-08-28 19:07:48,524 | src.federated.fedavg_orchestrator | Federated training done. Best Val CCC: 0.3318 (round 5).
+2026-08-28 19:07:48,656 | src.evaluation.ablation | [Ablation] centralized: val CCC 0.3318 | test CCC 0.1235
+2026-08-28 19:07:48,656 | FedPhenoGraft | 
+[Phase 8] Generating Explainability & Presentation Figures...
+2026-08-28 19:07:52,741 | FedPhenoGraft |   Counterfactual gene shifts (Δ UPDRS-III (BL → Year 2)): {'LRRK2': -0.20677316188812256, 'GBA': -0.18254131078720093, 'SNCA': -0.19765137135982513, 'PINK1': -0.2039412409067154, 'PRKN': -0.1935163289308548, 'APOE_e4_carrier': 0.0}
+2026-08-28 19:07:53,420 | src.evaluation.results_report | Results report written: C:\Users\Aarin Bhatta\OneDrive\Desktop\Projects\Gandih\PARK-IN-SON\outputs\results\RESULTS.md
+2026-08-28 19:07:53,420 | FedPhenoGraft | 
+======================================================================
+2026-08-28 19:07:53,420 | FedPhenoGraft |   Pipeline Complete!
+2026-08-28 19:07:53,420 | FedPhenoGraft |   Metrics summary → C:\Users\Aarin Bhatta\OneDrive\Desktop\Projects\Gandih\PARK-IN-SON\outputs\results\final_metrics.json
+2026-08-28 19:07:53,420 | FedPhenoGraft |   Results report  → C:\Users\Aarin Bhatta\OneDrive\Desktop\Projects\Gandih\PARK-IN-SON\outputs\results\RESULTS.md
+2026-08-28 19:07:53,420 | FedPhenoGraft |   Figures         → C:\Users\Aarin Bhatta\OneDrive\Desktop\Projects\Gandih\PARK-IN-SON\outputs\figures
+2026-08-28 19:07:53,421 | FedPhenoGraft |   Model weights   → C:\Users\Aarin Bhatta\OneDrive\Desktop\Projects\Gandih\PARK-IN-SON\outputs\models\fed_phenograft_best.pt
+2026-08-28 19:07:53,421 | FedPhenoGraft | ======================================================================

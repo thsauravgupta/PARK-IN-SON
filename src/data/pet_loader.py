@@ -51,11 +51,19 @@ def load_datscan(raw_dir: Path, visit: str = "BL") -> pd.DataFrame:
         logger.warning("DaTScan CSV not found. PET features will be zero (missing).")
         return pd.DataFrame()
     
-    # Filter to target visit
+    # Filter to target visit. PPMI codes the baseline DaTScan as "SC"
+    # (screening) — there is no "BL" row in DATScan_Analysis — so when the
+    # requested visit is baseline we accept SC as well, preferring an exact
+    # visit match if a patient somehow has both.
     if "EVENT_ID" in df.columns:
-        df = df[df["EVENT_ID"] == visit].copy()
-    
-    df = df.drop_duplicates(subset=["PATNO"], keep="last")
+        accepted = [visit, "SC"] if visit == "BL" else [visit]
+        df = df[df["EVENT_ID"].isin(accepted)].copy()
+        df["_evt_rank"] = df["EVENT_ID"].map({e: i for i, e in enumerate(accepted)})
+        df = (df.sort_values(["PATNO", "_evt_rank"])
+                .drop_duplicates(subset=["PATNO"], keep="first")
+                .drop(columns=["_evt_rank"]))
+    else:
+        df = df.drop_duplicates(subset=["PATNO"], keep="last")
     
     epsilon = 1e-8
     out = pd.DataFrame(index=df["PATNO"].values)
@@ -63,10 +71,10 @@ def load_datscan(raw_dir: Path, visit: str = "BL") -> pd.DataFrame:
     
     # Map column names (PPMI uses various conventions)
     col_map = {
-        "caudate_r": ["CAUDATE_R", "RCAUDATE", "R_caudate", "CAUDATE_RIGHT"],
-        "caudate_l": ["CAUDATE_L", "LCAUDATE", "L_caudate", "CAUDATE_LEFT"],
-        "putamen_r": ["PUTAMEN_R", "RPUTAMEN", "R_putamen", "PUTAMEN_RIGHT"],
-        "putamen_l": ["PUTAMEN_L", "LPUTAMEN", "L_putamen", "PUTAMEN_LEFT"],
+        "caudate_r": ["CAUDATE_R", "DATSCAN_CAUDATE_R", "RCAUDATE", "R_caudate", "CAUDATE_RIGHT"],
+        "caudate_l": ["CAUDATE_L", "DATSCAN_CAUDATE_L", "LCAUDATE", "L_caudate", "CAUDATE_LEFT"],
+        "putamen_r": ["PUTAMEN_R", "DATSCAN_PUTAMEN_R", "RPUTAMEN", "R_putamen", "PUTAMEN_RIGHT"],
+        "putamen_l": ["PUTAMEN_L", "DATSCAN_PUTAMEN_L", "LPUTAMEN", "L_putamen", "PUTAMEN_LEFT"],
     }
     
     raw_vals = {}

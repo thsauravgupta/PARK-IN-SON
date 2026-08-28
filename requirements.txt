@@ -18,6 +18,7 @@ xgboost==2.0.3
 lightgbm==4.3.0
 torch==2.3.0
 shap==0.45.0
+captum>=0.7.0
 
 # --- Dimensionality reduction ---
 umap-learn==0.5.6
