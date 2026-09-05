@@ -37,16 +37,70 @@ mri:
   fallback_mode: synthetic  # 'synthetic' | 'freesurfer_csv' | 'none'
 
 # ---------------------------------------------------------------------------
-# Cross-validation
+# Cross-validation (baselines)
 # ---------------------------------------------------------------------------
 cv:
   n_splits: 5
   stratify_on: diagnosis
 
 # ---------------------------------------------------------------------------
+# Subject-level data split (leak-free: fit statistics on train only)
+# ---------------------------------------------------------------------------
+split:
+  val_fraction: 0.15    # used for round-by-round monitoring + early stopping
+  test_fraction: 0.15   # evaluated EXACTLY ONCE, after training completes
+  stratify: true        # stratify on diagnosis so PD/HC ratios match
+
+# ---------------------------------------------------------------------------
+# Fed-PhenoGraft federated training
+# ---------------------------------------------------------------------------
+training:
+  num_clients: 4
+  num_rounds: 30
+  local_epochs: 2
+  batch_size: 32
+  lr: 1.0e-3
+  weight_decay: 1.0e-4        # L2 regularization (AdamW)
+  hsic_weight: 0.1
+  cls_weight: 0.3             # PD-vs-HC classification loss weight (multitask)
+  grad_clip: 1.0
+  early_stopping_patience: 5  # rounds without val-CCC improvement
+  # Client partitioning: 'site' uses real PPMI acquisition sites when a
+  # Center-Subject list CSV is in data/raw (falls back to dirichlet otherwise);
+  # 'dirichlet' simulates non-IID cross-site heterogeneity via label-skew;
+  # 'iid' is the original random-shard split.
+  partition: dirichlet
+  dirichlet_alpha: 0.5        # lower alpha = more heterogeneous clients
+
+model:
+  embed_dim: 32
+  num_heads: 4
+  dropout: 0.3
+
+# ---------------------------------------------------------------------------
+# Statistical rigor: bootstrap CIs, multi-seed runs, paired significance test
+# ---------------------------------------------------------------------------
+evaluation:
+  n_bootstrap: 1000           # bootstrap resamples for 95% CIs
+  num_seeds: 3                # independent Fed-PhenoGraft training runs (mean ± std)
+
+# ---------------------------------------------------------------------------
+# Ablation suite (each variant retrained with the same protocol)
+# ---------------------------------------------------------------------------
+ablation:
+  enabled: true
+  num_rounds: 20              # shorter budget per ablation run
+  early_stopping_patience: 3
+
+# ---------------------------------------------------------------------------
 # Target variables
 # ---------------------------------------------------------------------------
 target:
+  # 'delta'    → predict UPDRS-III CHANGE from baseline to regression_visit
+  #              (progression — harder, clinically more meaningful, avoids
+  #              baseline-score autocorrelation dominating the metric)
+  # 'absolute' → predict the raw UPDRS-III score at regression_visit
+  mode: delta
   regression: updrs_iii_v04       # UPDRS-III score at year 2 (V04)
   classification: diagnosis       # PD vs HC binary label
   regression_visit: V04

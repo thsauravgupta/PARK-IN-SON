@@ -1,0 +1,136 @@
+
+--- ppt/slides/slide1.xml ---
+Programme
+ 
+B.Tech
+BCSE497J – Project I
+Fed-
+PhenoGraft
+: Phenotype-Guided Asymmetric Cross-Modal Attention with Shared-Private Latent Decomposition for Federated Multi-Modal Parkinson's Disease Prediction
+Team members:
+Saurav
+ Kumar Gupta (23BCE2336)
+Amit
+ Adhikari (23BCE2327)
+Shreeyam
+ Acharya (23BCE2330)
+Faculty guide:
+Dhivyaa CR
+20701
+
+--- ppt/slides/slide2.xml ---
+2
+9
+-07-2026
+SCOPE
+2
+Aim
+To develop a federated, phenotype-guided multimodal representation learning framework (Fed-PhenoGraft) that improves the prediction of Parkinson's Disease (PD) diagnosis and severity. 
+It achieves this by asymmetrically querying imaging and genetic modalities based on clinical phenotypes, while simultaneously preserving data privacy across multiple clinical sites without centralizing raw patient data.
+
+--- ppt/slides/slide3.xml ---
+2
+9
+-07-2026
+SCOPE
+3
+Abstract
+Parkinson’s Disease (PD) diagnosis benefits significantly from multimodal data (clinical, genetics, MRI, PET). However, existing methods treat modalities symmetrically and require centralized data.
+We propose Fed-
+PhenoGraft
+, a novel federated learning framework featuring:
+1. Phenotype-Guided Asymmetric Attention: Clinical phenotypes query relevant structural and genetic features.
+2. Shared-Private Latent Decomposition: Uses HSIC orthogonality to disentangle disease-relevant info from modality noise.
+Evaluated on the PPMI cohort, Fed-
+PhenoGraft
+ aims to achieve superior prognostic accuracy and patient-specific interpretable biomarkers, all while maintaining privacy via Federated Learning.
+
+--- ppt/slides/slide4.xml ---
+2
+9
+-07-2026
+SCOPE
+4
+Literature Review
+• Modality Fusion: Combining heterogeneous data (MRI, PET, UPDRS, genetics) from the PPMI database consistently outperforms unimodal approaches for PD progression tracking [1].
+• Architectural Innovations: Recent models utilize cross-attention modules to align different data modalities and dynamically weight their importance, extracting more informative features [2].
+• Explainability (XAI): There is an increasing demand for explainable AI frameworks in PD diagnosis to identify affected brain regions and relevant genetic variants, moving away from "black-box" deep learning [3].
+
+--- ppt/slides/slide5.xml ---
+2
+9
+-07-2026
+SCOPE
+5
+
+--- ppt/slides/slide6.xml ---
+2
+9
+-07-2026
+SCOPE
+6
+Research Gap
+• Limited Integration of Multimodal Data
+Most existing works utilize only one or two modalities (MRI, clinical, or imaging), failing to fully exploit complementary information from MRI, PET, clinical, and genetic data.
+•
+ 
+Poor Handling of Incomplete Multimodal Data
+Most multimodal models assume complete patient records, whereas real-world clinical datasets frequently contain missing imaging or clinical modalities, reducing model applicability.
+• Lack of Longitudinal Disease Progression Modeling
+Current studies primarily focus on diagnosis, staging, or medication recommendation, with limited emphasis on modeling the temporal progression of Parkinson's disease.
+• 
+Limited Use of Digital Twin Technology
+Digital Twin approaches have mainly been applied to rehabilitation management, with little integration into predictive disease progression or personalized clinical decision support.
+
+--- ppt/slides/slide7.xml ---
+2
+9
+-07-2026
+SCOPE
+7
+Objectives
+1. To design a Phenotype-Guided Asymmetric Attention mechanism where clinical features selectively query MRI, PET, and genetics.
+2. To implement a Shared-Private Latent Decomposition using HSIC orthogonality to disentangle disease biomarkers from noise.
+3. To build a federated learning pipeline (FedAvg) that trains across multiple clinical sites without centralizing raw data.
+4. To incorporate robustness features (learned mask tokens for missing modalities, Monte Carlo Dropout for uncertainty).
+5. To provide a multi-level explainability suite (Attention Maps, Integrated Gradients, Counterfactuals).
+
+--- ppt/slides/slide8.xml ---
+2
+9
+-07-2026
+SCOPE
+8
+Identified: Sustainable Development Goals & Outcomes
+Identified: Sustainable Development Goals
+• SDG 3: Good Health and Well-being (Improving diagnostic accuracy and personalized treatment for Parkinson's Disease)
+• SDG 9: Industry, Innovation, and Infrastructure (Developing advanced, privacy-preserving AI infrastructure for healthcare)
+Outcomes
+• Journal (Scopus): Target publication in high-impact Q1 journals (e.g., IEEE JBHI, Elsevier Computers in Biology and Medicine).
+• Product/Others: A robust, federated AI framework applicable to other multimodal neurodegenerative datasets.
+
+--- ppt/slides/slide9.xml ---
+2
+9
+-07-2026
+SCOPE
+9
+References
+[1] A. 
+Vamvakas
+, T. Van 
+Balkom
+, G. Van Wingen, et al., "Prediction of impulse control disorders in Parkinson's disease through a longitudinal machine learning study," 
+npj
+ Parkinson's Disease, vol. 12, p. 38, 2026.
+[2] S. W. Akram and C. K, "Enhancing Parkinson's Disease Staging: An Integrative Deep Learning Framework for Multimodal Feature Selection," Journal of Molecular Neuroscience, 2026.
+[3] V. Awasthi et al., "
+HyCoSwin
+-PD: An Explainable Hybrid ConvNeXtV2-Swin Transformer Framework for Parkinson's Disease Detection from Neuroimaging," 
+MethodsX
+, vol. 16, 2026.
+[4] T. Zhi et al., "
+MultimodalCNN
+-PD: A Parkinson's Disease Diagnostics Framework Using Multimodal Convolutional Neural Network," Frontiers in Aging Neuroscience, vol. 18, 2026.
+[5] J. Qin, Y. Cai, Z. Wang, J. Jin, X. Huang, and L. Pei, "Design of a Parkinson's Rehabilitation Management System Based on Multimodal Learning and Digital Twin Technology," in Proc. IEEE Smart World Congress (SWC), Nadi, Fiji, 2024, pp. 2073-2080.
+[6] H. Kim, C. Park, J. Hoon Kim, S. Jang, and H. K. Lee, "Multimodal Reinforcement Learning for Embedding Networks and Medication Recommendation in Parkinson's Disease," IEEE Access, vol. 12, pp. 74251-74267, 2024.
