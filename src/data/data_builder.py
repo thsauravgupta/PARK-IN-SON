@@ -40,8 +40,7 @@ def build_real_dataset(config: dict) -> tuple:
     baseline_visit = config.get("target", {}).get("baseline_visit", "BL")
     target_visit = config.get("target", {}).get("regression_visit", "V04")
     target_mode = config.get("target", {}).get("mode", "absolute")
-    n_rois = config.get("mri", {}).get("n_rois", 100)
-    use_real_mri = config.get("mri", {}).get("use_real_mri", False)
+    mri_cfg = config.get("mri", {})
 
     # ── Step 1: Clinical features + targets ──────────────────────────
     logger.info("=" * 60)
@@ -70,7 +69,8 @@ def build_real_dataset(config: dict) -> tuple:
     # ── Step 2: MRI features ────────────────────────────────────────
     logger.info("=" * 60)
     logger.info("Step 2: Processing MRI Data...")
-    mri_df = build_mri_features(mri_dir, patnos, n_rois=n_rois, use_real_mri=use_real_mri)
+    mri_df = build_mri_features(mri_dir, patnos, mri_cfg=mri_cfg,
+                                project_root=project_root)
     
     # ── Step 3: PET/DaTScan features ────────────────────────────────
     logger.info("=" * 60)
@@ -149,7 +149,8 @@ def build_real_dataset(config: dict) -> tuple:
     logger.info(f"Dataset Summary:")
     logger.info(f"  Patients:  {len(patnos)}")
     logger.info(f"  Clinical:  {clinical_df.shape[1]} features")
-    logger.info(f"  MRI:       {mri_df.shape[1]} ROIs")
+    logger.info(f"  MRI:       {mri_df.shape[1]} features "
+                f"(source={mri_cfg.get('source', 'synthetic')})")
     logger.info(f"  PET:       {pet_df.shape[1]} features")
     logger.info(f"  Genetic:   {genetic_df.shape[1]} features")
     logger.info(f"  MRI missing:     {(mri_df.sum(axis=1) == 0).sum()}/{len(patnos)}")

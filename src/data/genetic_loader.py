@@ -81,20 +81,25 @@ def load_genetic_data(raw_dir: Path) -> pd.DataFrame:
                         .astype(int).values
                     )
                 else:
-                    # Binary: any positive/pathogenic result → 1
-                    raw = df[col].astype(str).str.lower().values
-                    binary = []
-                    for val in raw:
-                        if val in ["nan", "none", "", "negative", "neg", "0", "not tested"]:
-                            binary.append(0)
-                        elif val in ["positive", "pos", "1", "carrier", "mutation", "pathogenic"]:
-                            binary.append(1)
-                        else:
-                            try:
-                                binary.append(int(float(val)))
-                            except ValueError:
-                                binary.append(0)
-                    out[gene_name] = binary
+                    # PPMI records the VARIANT NAME, not a 0/1 flag: LRRK2 holds
+                    # 'G2019S', 'R1441G', 'G2019S/G2019S'; GBA holds 'N409S',
+                    # 'L483P', 'L29Afs*18'; SNCA holds 'A53T', 'duplication'.
+                    # Non-carriers are the literal string '0'.
+                    #
+                    # The previous parser tried int(float(val)) and swallowed the
+                    # ValueError as 0, so every genuine pathogenic variant was
+                    # recorded as a NON-carrier - 1,335 carriers across five genes
+                    # in this release, including 688 LRRK2 and 566 GBA. Treat any
+                    # value that is neither missing nor an explicit negative as a
+                    # carrier.
+                    s = df[col].astype(str).str.strip().str.lower()
+                    missing = s.isin(["nan", "none", "", "na", "n/a", "unknown",
+                                      "not tested", "not done"])
+                    negative = s.isin(["0", "0.0", "negative", "neg", "false", "no"])
+                    out[gene_name] = (~missing & ~negative).astype(int).values
+                    n_carriers = int(out[gene_name].sum())
+                    logger.info(f"  {gene_name}: {n_carriers} carriers "
+                                f"({int(missing.sum())} not tested)")
                 found = True
                 break
         

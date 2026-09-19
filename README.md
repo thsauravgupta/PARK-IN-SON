@@ -129,7 +129,7 @@ PARK-IN-SON/
 │   │
 │   ├── data/
 │   │   ├── clinical_loader.py    # UPDRS + Demographics + Age_at_visit + MoCA
-│   │   ├── mri_pipeline.py       # NIfTI → nilearn Schaefer ROI extraction
+│   │   ├── mri_pipeline.py       # MRI features: freesurfer | nifti | synthetic
 │   │   ├── pet_loader.py         # DaTScan SBR CSV + asymmetry features
 │   │   ├── genetic_loader.py     # Mutation carrier status encoding
 │   │   ├── data_builder.py       # Unified orchestrator (returns RAW features)
@@ -155,7 +155,7 @@ PARK-IN-SON/
 │
 ├── data/
 │   └── raw/                      # ← Downloaded CSVs go here (see table below)
-│       └── mri/                  # ← Optional NIfTI scans: {PATNO}/T1w.nii.gz
+│       └── mri/                  # ← FreeSurfer_MRI_Volumes.csv (used by default)
 │
 └── outputs/
     ├── figures/                  # attention_maps.png
@@ -210,7 +210,7 @@ The automatic script needs programmatic IDA access, which many accounts don't ha
    | 10 | `Genetic_Testing_Results.csv` | Biospecimen → Genetics | `Genetic_Results.csv`, `Genetics.csv` |
 
 4. **Rename rule:** IDA appends a date suffix on export (e.g. `MDS-UPDRS_Part_III_23Aug2026.csv`) — strip it so the filename matches the table.
-5. **MRI scans (optional, file type: NIfTI `.nii`/`.nii.gz`):** IDA → PPMI → Search → Advanced Image Search → Modality = MRI, T1-weighted anatomical (MPRAGE / SAG T1), Visit = Baseline → add to collection → download as **NIfTI** → place as `data/raw/mri/{PATNO}/T1w.nii.gz` → set `mri.use_real_mri: true` in `config.yaml`.
+5. **MRI scans (optional, file type: NIfTI `.nii`/`.nii.gz`):** IDA → PPMI → Search → Advanced Image Search → Modality = MRI, T1-weighted anatomical (MPRAGE / SAG T1), Visit = Baseline → add to collection → download as **NIfTI** → place under `data/raw/mri/` (both `{PATNO}/T1w.nii.gz` and the nested IDA layout are found automatically) → set `mri.source: nifti` in `config.yaml`. The scans must already be normalised to MNI space; see `mri.nifti_space`.
 6. **Verify:** run `python src/main.py` and check the "Dataset Summary" log block (~3,600 patients expected). Any "CSV not found, skipping" line means a file is missing or misnamed.
 
 ### Step 3: Run Everything — Baselines → Federated Training → Testing
@@ -268,7 +268,8 @@ Download each file from the IDA LONI portal (**PPMI → Download → Study Data*
 **MRI (optional, for the imaging branch):**
 - IDA → PPMI → **Image Collections** → search T1-weighted anatomical (MPRAGE/SPGR), download as NIfTI.
 - Place as `data/raw/mri/{PATNO}/T1w.nii.gz` (any `.nii`/`.nii.gz` inside the PATNO folder is picked up).
-- Then set `mri.use_real_mri: true` in `config.yaml`. Until then, MRI uses the synthetic fallback and the model relies on its learned mask tokens.
+- Then set `mri.source: nifti` in `config.yaml` (MNI-space scans only).
+- **You may not need this.** `mri.source: freesurfer` (the default) uses PPMI's `FreeSurfer_MRI_Volumes.csv` regional volumes as the real structural-MRI modality with no NIfTI download and no registration step.
 
 ---
 
@@ -303,7 +304,7 @@ Download each file from the IDA LONI portal (**PPMI → Download → Study Data*
 
 | # | Task | Priority | Details |
 |---|------|----------|---------|
-| 1 | **Download MRI NIfTIs** | 🔴 Critical | The ablation study now *proves* this matters: removing the synthetic-MRI branch improves test CCC (0.210 vs 0.189), so real T1w data is the main open lever. See [DATASET_DOWNLOAD.md](DATASET_DOWNLOAD.md), then set `mri.use_real_mri: true` |
+| 1 | **Download MRI NIfTIs** | 🔴 Critical | The ablation study now *proves* this matters: removing the synthetic-MRI branch improves test CCC (0.210 vs 0.189), so real T1w data is the main open lever. Superseded: `mri.source: freesurfer` now supplies real MRI from PPMI's FreeSurfer volumes. NIfTIs remain a later upgrade. |
 | 2 | **Hyperparameter Tuning** | 🔴 High | On the delta target Fed-PhenoGraft (0.189) does not yet beat LightGBM (0.230). Tune `model.embed_dim`, `num_heads`, `training.lr`, `local_epochs`, `hsic_weight`, `cls_weight` — against the **validation** set only; never touch test |
 | 3 | **Center-Subject list CSV** | 🟡 Medium | Download it from IDA (Subject Characteristics) into `data/raw/` and set `training.partition: site` to replace simulated heterogeneity with real acquisition sites |
 | 4 | **Differential Privacy** | 🟢 Low | DP-SGD noise in client updates for formal privacy guarantees |

@@ -1,25 +1,37 @@
+import logging
+
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from captum.attr import IntegratedGradients
 
 def extract_attention_weights(model, dataloader, device='cpu'):
+    """Collect per-batch MRI attention weights.
+
+    Returns None when the model was built with use_attention=False (the
+    ablation variant), in which case there are no weights to collect.
+    """
     model.eval()
     all_attn_mri = []
-    
+
     with torch.no_grad():
         for batch in dataloader:
             batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
             out = model(batch)
+            attn = out['attn_weights']['mri']
+            if attn is None:          # attention disabled for this variant
+                return None
             # Shape is expected to be (N, num_heads, tgt_len, src_len)
-            all_attn_mri.append(out['attn_weights']['mri'].cpu().numpy())
-            
-    return np.concatenate(all_attn_mri, axis=0)
+            all_attn_mri.append(attn.cpu().numpy())
+
+    return np.concatenate(all_attn_mri, axis=0) if all_attn_mri else None
 
 def visualize_attention(attn_weights, save_path="outputs/figures/attention_maps.png"):
+    if attn_weights is None:
+        return None
     # Flatten the weights to plot appropriately even if it is a single value from sequence length 1
     avg_attn = np.atleast_1d(attn_weights.mean(axis=0).flatten())
-    
+
     plt.figure(figsize=(10, 4))
     plt.bar(range(len(avg_attn)), avg_attn)
     plt.title("Average Phenotype-Guided Attention over MRI Features")
@@ -140,12 +152,20 @@ def counterfactual_gene_analysis(model, preprocessor, clin_raw, mri_raw, pet_raw
     """
     Counterfactual "what-if" analysis on genetic carrier status.
 
-    For each PD-risk gene, predicts the Year-2 UPDRS-III for every test subject
-    twice — once with carrier status forced to 0 and once forced to 1 (derived
-    columns n_variants / lrrk2_positive / gba_positive are recomputed so the
-    counterfactual is internally consistent). Flips happen in RAW feature space
-    and are re-run through the train-fit preprocessor, so scaled values stay
-    exact. The bar chart shows the mean predicted progression shift per gene.
+    For each PD-risk gene, predicts the Year-2 UPDRS-III for every eligible test
+    subject twice — once with carrier status forced to 0 and once forced to 1
+    (derived columns n_variants / lrrk2_positive / gba_positive are recomputed so
+    the counterfactual is internally consistent). Flips happen in RAW feature
+    space and are re-run through the train-fit preprocessor, so scaled values
+    stay exact. The bar chart shows the mean predicted progression shift per gene.
+
+    IMPORTANT — only subjects whose genetic modality was actually COLLECTED are
+    included. A subject with no genetic record has an all-zero genetic row, which
+    the dataset reads as 'modality missing' and the model answers with its learned
+    mask token. Forcing a gene to 1 on such a subject makes the row non-zero and
+    silently flips the mask from missing to present, so the measured shift would be
+    the mask token, not the gene. Restricting to observed subjects keeps this an
+    analysis of genetics.
     """
     import os
     import pandas as pd
@@ -156,6 +176,22 @@ def counterfactual_gene_analysis(model, preprocessor, clin_raw, mri_raw, pet_raw
              if g in gen_raw.columns]
     if not genes:
         return None
+
+    observed = ~(gen_raw.values == 0).all(axis=1)
+    n_obs, n_total = int(observed.sum()), len(gen_raw)
+    if n_obs < 2:
+        logging.getLogger(__name__).warning(
+            "Counterfactual gene analysis skipped: only %d/%d test subjects have "
+            "an observed genetic record.", n_obs, n_total)
+        return None
+    clin_raw = clin_raw.loc[observed]
+    mri_raw = mri_raw.loc[observed]
+    pet_raw = pet_raw.loc[observed]
+    gen_raw = gen_raw.loc[observed]
+    logging.getLogger(__name__).info(
+        "Counterfactual gene analysis on %d/%d test subjects with an observed "
+        "genetic record (subjects without one are excluded: flipping a gene there "
+        "would flip the missing-modality mask instead).", n_obs, n_total)
 
     def _consistent(gen_df):
         gen_df = gen_df.copy()
@@ -197,7 +233,8 @@ def counterfactual_gene_analysis(model, preprocessor, clin_raw, mri_raw, pet_raw
     colors = ['#e74c3c' if v > 0 else '#2ecc71' for v in values]
     bars = plt.bar(names, values, color=colors)
     plt.axhline(0, color='black', linewidth=0.8)
-    plt.title(f"Counterfactual: Predicted {target_label} Shift if Carrier vs Non-Carrier")
+    plt.title(f"Counterfactual: Predicted {target_label} Shift if Carrier vs "
+              f"Non-Carrier (n = {n_obs} with an observed genetic record)")
     plt.ylabel(f"Mean Δ Predicted {target_label} (points)")
     for bar, v in zip(bars, values):
         plt.text(bar.get_x() + bar.get_width() / 2.0, v,

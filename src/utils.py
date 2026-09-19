@@ -196,22 +196,15 @@ def concordance_correlation_coefficient(
     References:
         Lin, L.I. (1989). A concordance correlation coefficient to evaluate
         reproducibility. Biometrics, 45(1), 255-268.
+
+    Note:
+        This is a thin re-export of the single implementation in
+        :mod:`src.evaluation.metrics`. Two copies previously existed with
+        different zero-variance handling, which is exactly how a metric
+        silently drifts between the training loop and the reported results.
     """
-    y_true = np.asarray(y_true, dtype=np.float64).ravel()
-    y_pred = np.asarray(y_pred, dtype=np.float64).ravel()
-
-    mean_true = np.mean(y_true)
-    mean_pred = np.mean(y_pred)
-    var_true = np.var(y_true)
-    var_pred = np.var(y_pred)
-    covariance = np.mean((y_true - mean_true) * (y_pred - mean_pred))
-
-    denominator = var_true + var_pred + (mean_true - mean_pred) ** 2
-
-    if denominator < 1e-12:
-        return 0.0
-
-    return float(2.0 * covariance / denominator)
+    from src.evaluation.metrics import concordance_correlation_coefficient as _ccc
+    return _ccc(y_true, y_pred)
 
 
 def safe_log_transform(

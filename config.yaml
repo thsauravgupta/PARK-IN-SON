@@ -32,9 +32,24 @@ embedding_dims:
 # MRI processing
 # ---------------------------------------------------------------------------
 mri:
-  n_rois: 100            # Schaefer atlas parcels
-  use_real_mri: false     # Set true only if NIfTI files successfully downloaded
-  fallback_mode: synthetic  # 'synthetic' | 'freesurfer_csv' | 'none'
+  # 'freesurfer' - real PPMI FreeSurfer regional volumes (no NIfTIs needed)
+  # 'nifti'      - Schaefer-100 parcellation of T1w scans (must be MNI-space)
+  # 'synthetic'  - Gaussian noise; reproduces the pre-real-MRI results only
+  source: freesurfer
+
+  # --- freesurfer source ---
+  freesurfer_csv: data/raw/mri/FreeSurfer_MRI_Volumes.csv
+  freesurfer_visit: BL
+  normalize_by_icv: true    # divide volumes by EstimatedTotalIntraCranialVol
+
+  # --- nifti source ---
+  n_rois: 100               # Schaefer atlas parcels
+  nifti_space: mni          # 'mni' = already normalised. 'native' is refused:
+                            # the atlas is MNI-space, so parcels would land on
+                            # the wrong anatomy without registration.
+
+  # Extracted features are cached here and reused until the inputs change.
+  cache: data/processed/mri_features.parquet
 
 # ---------------------------------------------------------------------------
 # Cross-validation (baselines)

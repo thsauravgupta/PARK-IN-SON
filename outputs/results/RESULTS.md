@@ -8,53 +8,53 @@ Subject-level split: **2430 train / 521 val / 521 test** (stratified on diagnosi
 
 | Task | Metric | Value |
 |------|--------|-------|
-| Progression regression | CCC | **0.1469** [95% CI 0.0406, 0.2439] |
-| Progression regression | RMSE (UPDRS-III pts) | 7.64 |
-| Progression regression | MAE (UPDRS-III pts) | 5.14 |
-| Progression regression | R² | -0.0993 |
-| Progression regression | Pearson r | 0.1769 |
-| PD vs HC classification | ROC-AUC | **0.9816** |
-| PD vs HC classification | Accuracy | 0.9367 |
-| PD vs HC classification | F1 | 0.9115 |
+| Progression regression | CCC | **0.2302** [95% CI 0.1325, 0.3169] |
+| Progression regression | RMSE (UPDRS-III pts) | 7.21 |
+| Progression regression | MAE (UPDRS-III pts) | 4.77 |
+| Progression regression | R² | 0.0224 |
+| Progression regression | Pearson r | 0.2856 |
+| PD vs HC classification | ROC-AUC | **0.9810** |
+| PD vs HC classification | Accuracy | 0.9386 |
+| PD vs HC classification | F1 | 0.9126 |
 
-Generalization check: train CCC 0.4982 vs val CCC 0.3591 (gap +0.139) — no overfitting signal.
+Generalization check: train CCC 0.4927 vs val CCC 0.3112 (gap +0.182) — **overfitting signal — retune.**
 
 ## Baseline comparison — 12 models (same held-out test set)
 
 | Model | CV CCC (mean ± std) | Test CCC | Test RMSE | Test MAE | Test R² | Test Pearson |
 |-------|---------------------|----------|-----------|----------|---------|--------------|
-| linear | 0.2367 ± 0.0241 | 0.2039 | 6.96 | 4.78 | 0.0894 | 0.3106 |
-| ridge | 0.2368 ± 0.0245 | 0.2036 | 6.96 | 4.78 | 0.0893 | 0.3105 |
-| lasso | 0.2195 ± 0.0231 | 0.1833 | 6.91 | 4.70 | 0.1000 | 0.3208 |
-| elastic_net | 0.2104 ± 0.0224 | 0.1776 | 6.92 | 4.71 | 0.0974 | 0.3165 |
-| svm | 0.0603 ± 0.0074 | 0.0552 | 7.16 | 4.75 | 0.0342 | 0.2533 |
-| knn | 0.0783 ± 0.0206 | 0.0464 | 7.40 | 4.98 | -0.0296 | 0.0950 |
-| random_forest | 0.0993 ± 0.0151 | 0.0821 | 7.07 | 4.73 | 0.0603 | 0.2949 |
-| extra_trees | 0.0635 ± 0.0105 | 0.0511 | 7.14 | 4.76 | 0.0410 | 0.2883 |
-| gradient_boosting | 0.2322 ± 0.0262 | 0.1911 | 7.01 | 4.74 | 0.0758 | 0.2921 |
-| mlp | 0.1400 ± 0.0751 | 0.1924 | 7.10 | 4.93 | 0.0518 | 0.2729 |
-| xgboost | 0.2401 ± 0.0302 | 0.2135 | 6.96 | 4.67 | 0.0883 | 0.3141 |
-| lightgbm | 0.2253 ± 0.0213 | 0.2300 | 6.94 | 4.67 | 0.0931 | 0.3233 |
-| **Fed-PhenoGraft** | val 0.3591 (early-stopped) | **0.1469** | 7.64 | 5.14 | -0.0993 | 0.1769 |
+| linear | 0.1904 ± 0.0972 | 0.2025 | 6.98 | 4.78 | 0.0827 | 0.3024 |
+| ridge | 0.2345 ± 0.0221 | 0.2038 | 6.97 | 4.78 | 0.0863 | 0.3068 |
+| lasso | 0.2219 ± 0.0167 | 0.1911 | 6.89 | 4.70 | 0.1074 | 0.3322 |
+| elastic_net | 0.2106 ± 0.0158 | 0.1822 | 6.90 | 4.70 | 0.1030 | 0.3258 |
+| svm | 0.0989 ± 0.0141 | 0.0944 | 7.08 | 4.68 | 0.0561 | 0.3032 |
+| knn | 0.0836 ± 0.0125 | 0.0619 | 7.40 | 4.92 | -0.0300 | 0.1093 |
+| random_forest | 0.1226 ± 0.0177 | 0.1208 | 6.97 | 4.68 | 0.0845 | 0.3198 |
+| extra_trees | 0.0793 ± 0.0111 | 0.0662 | 7.10 | 4.72 | 0.0517 | 0.2926 |
+| gradient_boosting | 0.2719 ± 0.0263 | 0.2401 | 6.88 | 4.65 | 0.1078 | 0.3406 |
+| mlp | 0.2581 ± 0.0338 | 0.2441 | 6.90 | 4.64 | 0.1040 | 0.3412 |
+| xgboost | 0.2708 ± 0.0294 | 0.2430 | 6.93 | 4.68 | 0.0974 | 0.3337 |
+| lightgbm | 0.2843 ± 0.0304 | 0.2687 | 6.86 | 4.65 | 0.1135 | 0.3563 |
+| **Fed-PhenoGraft** | val 0.3112 (early-stopped) | **0.2302** | 7.21 | 4.77 | 0.0224 | 0.2856 |
 
 ## Statistical analysis
 
-- Bootstrap 95% CI (n=1000 resamples) on test CCC: **[0.0406, 0.2439]**.
-- Paired bootstrap vs the strongest baseline (**lightgbm**): ΔCCC -0.0831 [95% CI -0.1667, -0.0054], p = 0.9820 — not statistically significant at α = 0.05.
-- Across **3 independent training seeds**: test CCC 0.1567 ± 0.0303 (primary model = best-validation seed; test never used for selection).
+- Bootstrap 95% CI (n=1000 resamples) on test CCC: **[0.1325, 0.3169]**.
+- Paired bootstrap vs the strongest baseline (**lightgbm**): ΔCCC -0.0386 [95% CI -0.0998, 0.0220], p = 0.9000 — not statistically significant at α = 0.05.
+- Across **3 independent training seeds**: test CCC 0.2327 ± 0.0089 (primary model = best-validation seed; test never used for selection).
 
 ## Ablation study (each variant retrained, same protocol)
 
 | Variant | Val CCC | Test CCC | Test RMSE | Test MAE |
 |---------|---------|----------|-----------|----------|
-| **Full Fed-PhenoGraft** | 0.3591 | **0.1469** | 7.64 | 5.14 |
-| − Asymmetric attention | 0.2885 | 0.1736 | 7.34 | 4.86 |
-| − HSIC shared-private loss | 0.3130 | 0.1481 | 7.78 | 5.15 |
-| Centralized (1 client) | 0.3142 | 0.1857 | 7.59 | 5.07 |
-| − MRI modality | 0.3272 | 0.2241 | 6.90 | 4.65 |
-| − PET/DaTScan modality | 0.2833 | 0.1303 | 7.86 | 5.21 |
-| − Genetics modality | 0.3139 | 0.1474 | 7.79 | 5.15 |
-| Clinical only | 0.3072 | 0.2055 | 6.91 | 4.64 |
+| **Full Fed-PhenoGraft** | 0.3112 | **0.2302** | 7.21 | 4.77 |
+| − Asymmetric attention | 0.3111 | 0.2181 | 7.00 | 4.63 |
+| − HSIC shared-private loss | 0.3022 | 0.2046 | 7.18 | 4.70 |
+| Centralized (1 client) | 0.3074 | 0.2400 | 6.89 | 4.59 |
+| − MRI modality | 0.3135 | 0.2099 | 6.98 | 4.65 |
+| − PET/DaTScan modality | 0.2668 | 0.1890 | 7.01 | 4.68 |
+| − Genetics modality | 0.3010 | 0.2016 | 7.20 | 4.72 |
+| Clinical only | 0.2772 | 0.1962 | 6.93 | 4.68 |
 
 ## Figures
 

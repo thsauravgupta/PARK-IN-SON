@@ -1,6 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Processor for real MRI NIfTI files using Nilearn.
+LEGACY MRI processor — kept only for scripts/generate_embeddings.py.
+
+DO NOT USE for new work. The supported MRI path is src/data/mri_pipeline.py,
+which src/main.py calls. This module has three defects that mri_pipeline.py
+fixes, and they are recorded here so nobody re-adopts it by accident:
+
+  1. PATNO is guessed with ``f.stem.split("_")[1]`` and kept as a STRING, so
+     the resulting index never joins the integer PATNO index used everywhere
+     else in the project.
+  2. The Schaefer atlas is applied with no resampling at all, so it only works
+     if the image already sits on the atlas grid.
+  3. ``standardize=True`` on a single-volume structural scan is a no-op that
+     nilearn warns about, leaving raw scanner-dependent intensities.
+
+See src/data/mri_pipeline.py for the maintained implementation.
 """
 
 import logging
