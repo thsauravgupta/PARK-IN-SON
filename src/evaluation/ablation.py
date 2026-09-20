@@ -58,7 +58,7 @@ def _zero_modality(ds: FederatedPPMIDataset, drop_names) -> FederatedPPMIDataset
 
 
 def run_ablation_suite(train_ds, val_ds, test_ds, input_dims, config,
-                       site_labels=None):
+                       mri_feature_names,site_labels=None):
     """
     Trains every ablation variant and returns
     {variant: {"val": metrics, "test": metrics}}.
@@ -92,15 +92,57 @@ def run_ablation_suite(train_ds, val_ds, test_ds, input_dims, config,
             site_labels=site_labels,
         )
 
+        # model = FedPhenoGraft(
+        #     input_dims,
+        #     embed_dim=model_cfg.get("embed_dim", 32),
+        #     num_heads=model_cfg.get("num_heads", 4),
+        #     dropout=model_cfg.get("dropout", 0.3),
+        #     use_attention=spec.get("use_attention", True),
+        # )
+        mri_cfg = config.get("mri", {})
+
         model = FedPhenoGraft(
+
             input_dims,
-            embed_dim=model_cfg.get("embed_dim", 32),
-            num_heads=model_cfg.get("num_heads", 4),
-            dropout=model_cfg.get("dropout", 0.3),
-            use_attention=spec.get("use_attention", True),
+
+            embed_dim=model_cfg.get(
+                "embed_dim",
+                32,
+            ),
+
+            num_heads=model_cfg.get(
+                "num_heads",
+                4,
+            ),
+
+            dropout=model_cfg.get(
+                "dropout",
+                0.35,
+            ),
+
+            use_attention=spec.get(
+                "use_attention",
+                True,
+            ),
+
+            mri_feature_names=list(
+                mri_feature_names
+            ),
+
+            mri_graph_features=mri_cfg.get(
+                "graph_features",
+                [],
+            ),
+
+            mri_gnn_hidden=int(
+                mri_cfg.get(
+                    "gnn_hidden_dim",
+                    64,
+                )
+            ),
         )
 
-        model, _ = simulate_federated_training(
+        model, _, _ = simulate_federated_training(
             model, clients, va,
             num_rounds=num_rounds,
             local_epochs=train_cfg.get("local_epochs", 2),

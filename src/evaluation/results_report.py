@@ -105,145 +105,372 @@ def _fmt(v, digits=4):
 
 
 def write_results_markdown(summary: dict, save_path: Path):
-    """Markdown results summary suitable for pasting into the report/slides."""
+    """Markdown results summary compatible with the Option-B protocol."""
+
     fed = summary["fed_phenograft"]
-    test, val, train = fed["test"], fed["val"], fed["train"]
+
+    test = fed["test"]
+    train = fed.get("train", {})
+    final_development = fed.get("final_development", {})
+
     sizes = summary["split_sizes"]
-    target_label = summary.get("target", {}).get("label", "UPDRS-III @ Year 2")
-    partition = summary.get("federated_partition", "iid")
-    stats = summary.get("statistics") or {}
-    ci = (stats.get("test_ci_95") or {}).get("ccc")
+    target_label = summary.get(
+        "target",
+        {}
+    ).get(
+        "label",
+        "UPDRS-III @ Year 2"
+    )
+
+    partition = summary.get(
+        "federated_partition",
+        "iid"
+    )
+
+    stats = summary.get(
+        "statistics"
+    ) or {}
+
+    ci = (
+        stats.get("test_ci_95") or {}
+    ).get(
+        "ccc"
+    )
+
+    # --------------------------------------------------------------
+    # Test CCC + CI
+    # --------------------------------------------------------------
 
     ccc_str = f"**{_fmt(test['ccc'])}**"
+
     if ci:
-        ccc_str += f" [95% CI {_fmt(ci['ci_low'])}, {_fmt(ci['ci_high'])}]"
+        ccc_str += (
+            f" [95% CI "
+            f"{_fmt(ci['ci_low'])}, "
+            f"{_fmt(ci['ci_high'])}]"
+        )
+
+    # --------------------------------------------------------------
+    # Header
+    # --------------------------------------------------------------
 
     lines = [
         "# Fed-PhenoGraft — Results Summary",
         "",
-        f"Regression target: **{target_label}**. Federated client partition: "
-        f"**{partition}**.",
+        f"Regression target: **{target_label}**. "
+        f"Federated client partition: **{partition}**.",
         "",
-        f"Subject-level split: **{sizes['train']} train / {sizes['val']} val / "
-        f"{sizes['test']} test** (stratified on diagnosis; test evaluated once).",
+        f"Subject-level split: **{sizes['train']} train / "
+        f"{sizes['val']} validation / "
+        f"{sizes['test']} test**. "
+        f"The test set was not used for model or round selection.",
+        "",
+        "## Evaluation Protocol",
+        "",
+        "The experiment follows **Option B**:",
+        "",
+        f"- Development stage: {sizes['train']} training subjects "
+        f"with {sizes['val']} validation subjects.",
+        "- Validation was used only to select the number of "
+        "federated training rounds.",
+        f"- Final stage: all {sizes['train'] + sizes['val']} "
+        "development subjects were used for training.",
+        "- A fresh model was initialized for the final fit.",
+        "- Final preprocessing was fitted on train + validation.",
+        f"- The held-out test set contains {sizes['test']} subjects "
+        "and was evaluated only after final training.",
         "",
         "## Fed-PhenoGraft (held-out test)",
         "",
         "| Task | Metric | Value |",
         "|------|--------|-------|",
         f"| Progression regression | CCC | {ccc_str} |",
-        f"| Progression regression | RMSE (UPDRS-III pts) | {_fmt(test['rmse'], 2)} |",
-        f"| Progression regression | MAE (UPDRS-III pts) | {_fmt(test['mae'], 2)} |",
-        f"| Progression regression | R² | {_fmt(test.get('r2'))} |",
-        f"| Progression regression | Pearson r | {_fmt(test.get('pearson'))} |",
+        f"| Progression regression | RMSE (UPDRS-III pts) | "
+        f"{_fmt(test['rmse'], 2)} |",
+        f"| Progression regression | MAE (UPDRS-III pts) | "
+        f"{_fmt(test['mae'], 2)} |",
+        f"| Progression regression | R² | "
+        f"{_fmt(test.get('r2'))} |",
+        f"| Progression regression | Pearson r | "
+        f"{_fmt(test.get('pearson'))} |",
     ]
+
     if "auc" in test:
         lines += [
-            f"| PD vs HC classification | ROC-AUC | **{_fmt(test['auc'])}** |",
-            f"| PD vs HC classification | Accuracy | {_fmt(test['accuracy'])} |",
-            f"| PD vs HC classification | F1 | {_fmt(test.get('f1'))} |",
+            f"| PD vs HC classification | ROC-AUC | "
+            f"**{_fmt(test['auc'])}** |",
+            f"| PD vs HC classification | Accuracy | "
+            f"{_fmt(test['accuracy'])} |",
+            f"| PD vs HC classification | F1 | "
+            f"{_fmt(test.get('f1'))} |",
         ]
+
+    # --------------------------------------------------------------
+    # Final development diagnostics
+    # --------------------------------------------------------------
+
     lines += [
         "",
-        f"Generalization check: train CCC {_fmt(train['ccc'])} vs val CCC "
-        f"{_fmt(val['ccc'])} (gap {fed['train_val_ccc_gap']:+.3f}) — "
-        + ("no overfitting signal." if fed['train_val_ccc_gap'] < 0.15
-           else "**overfitting signal — retune.**"),
+        "### Final development-set diagnostics",
         "",
-        f"## Baseline comparison — {len(summary.get('baselines', {}))} models "
-        "(same held-out test set)",
+        "The following values describe the final model on the "
+        "development population after train + validation were combined. "
+        "They are **not validation metrics** and were not used for "
+        "model selection.",
         "",
-        "| Model | CV CCC (mean ± std) | Test CCC | Test RMSE | Test MAE | Test R² | Test Pearson |",
-        "|-------|---------------------|----------|-----------|----------|---------|--------------|",
+        f"- Training-subset CCC: {_fmt(train.get('ccc'))}",
+        f"- Final development CCC: "
+        f"{_fmt(final_development.get('ccc'))}",
+        f"- Selected final rounds: "
+        f"{fed.get('selected_development_rounds', '—')}",
+        "",
+        "## Baseline comparison — "
+        f"{len(summary.get('baselines', {}))} models",
+        "",
+        "All baselines were fitted on the same train + validation "
+        "development population and evaluated on the same held-out "
+        "test set.",
+        "",
+        "| Model | CV CCC (mean ± std) | Test CCC | "
+        "Test RMSE | Test MAE | Test R² | Test Pearson |",
+        "|-------|---------------------|----------|"
+        "-----------|----------|---------|--------------|",
     ]
-    for name, r in summary.get("baselines", {}).items():
+
+    for name, r in summary.get(
+        "baselines",
+        {}
+    ).items():
+
         lines.append(
-            f"| {name} | {_fmt(r['cv_mean'])} ± {_fmt(r['cv_std'])} "
-            f"| {_fmt(r.get('test_ccc'))} | {_fmt(r.get('test_rmse'), 2)} "
-            f"| {_fmt(r.get('test_mae'), 2)} | {_fmt(r.get('test_r2'))} "
-            f"| {_fmt(r.get('test_pearson'))} |"
+            f"| {name} | "
+            f"{_fmt(r['cv_mean'])} ± {_fmt(r['cv_std'])} | "
+            f"{_fmt(r.get('test_ccc'))} | "
+            f"{_fmt(r.get('test_rmse'), 2)} | "
+            f"{_fmt(r.get('test_mae'), 2)} | "
+            f"{_fmt(r.get('test_r2'))} | "
+            f"{_fmt(r.get('test_pearson'))} |"
         )
+
     lines += [
-        f"| **Fed-PhenoGraft** | val {_fmt(val['ccc'])} (early-stopped) "
-        f"| **{_fmt(test['ccc'])}** | {_fmt(test['rmse'], 2)} "
-        f"| {_fmt(test['mae'], 2)} | {_fmt(test.get('r2'))} "
-        f"| {_fmt(test.get('pearson'))} |",
+        f"| **Fed-PhenoGraft** | "
+        f"selected round {fed.get('selected_development_rounds', '—')} | "
+        f"**{_fmt(test['ccc'])}** | "
+        f"{_fmt(test['rmse'], 2)} | "
+        f"{_fmt(test['mae'], 2)} | "
+        f"{_fmt(test.get('r2'))} | "
+        f"{_fmt(test.get('pearson'))} |",
         "",
     ]
 
-    # ── Statistical rigor ───────────────────────────────────────────
-    sig = stats.get("significance_vs_best_baseline")
-    seed_runs = stats.get("seed_runs") or {}
-    if ci or sig or seed_runs.get("num_seeds", 1) > 1:
-        lines += ["## Statistical analysis", ""]
+    # --------------------------------------------------------------
+    # Statistical analysis
+    # --------------------------------------------------------------
+
+    sig = stats.get(
+        "significance_vs_strongest_baseline"
+    )
+
+    seed_runs = stats.get(
+        "seed_runs"
+    ) or {}
+
+    if (
+        ci
+        or sig
+        or seed_runs.get("num_seeds", 1) > 1
+    ):
+        lines += [
+            "## Statistical analysis",
+            "",
+        ]
+
     if ci:
         lines.append(
-            f"- Bootstrap 95% CI (n={stats.get('n_bootstrap', 1000)} resamples) "
-            f"on test CCC: **[{_fmt(ci['ci_low'])}, {_fmt(ci['ci_high'])}]**.")
+            f"- Nonparametric bootstrap 95% CI "
+            f"(n={stats.get('n_bootstrap', 1000)} resamples) "
+            f"for test CCC: "
+            f"**[{_fmt(ci['ci_low'])}, "
+            f"{_fmt(ci['ci_high'])}]**."
+        )
+
     if sig:
-        verdict = ("**statistically significant**" if sig.get("significant_at_0.05")
-                   else "not statistically significant")
+
+        verdict = (
+            "**statistically significant**"
+            if sig.get(
+                "significant_at_0.05"
+            )
+            else "not statistically significant"
+        )
+
         lines.append(
-            f"- Paired bootstrap vs the strongest baseline "
-            f"(**{sig.get('compared_against')}**): ΔCCC {sig['delta']:+.4f} "
-            f"[95% CI {_fmt(sig['ci_low'])}, {_fmt(sig['ci_high'])}], "
-            f"p = {_fmt(sig['p_value'])} — {verdict} at α = 0.05.")
-    if seed_runs.get("num_seeds", 1) > 1:
-        t = seed_runs.get("test", {}).get("ccc")
+            f"- Paired permutation test against the strongest "
+            f"baseline (**{sig.get('compared_against')}**): "
+            f"ΔCCC {sig['delta']:+.4f} "
+            f"[95% CI "
+            f"{_fmt(sig.get('ci_low'))}, "
+            f"{_fmt(sig.get('ci_high'))}], "
+            f"p = {_fmt(sig.get('p_value'))} — "
+            f"{verdict} at α = 0.05."
+        )
+
+    if seed_runs.get(
+        "num_seeds",
+        1
+    ) > 1:
+
+        t = (
+            seed_runs
+            .get(
+                "final_test",
+                {}
+            )
+            .get(
+                "ccc"
+            )
+        )
+
         if t:
+
             lines.append(
-                f"- Across **{seed_runs['num_seeds']} independent training seeds**: "
-                f"test CCC {_fmt(t['mean'])} ± {_fmt(t['std'])} "
-                f"(primary model = best-validation seed; test never used for selection).")
-    if ci or sig or seed_runs.get("num_seeds", 1) > 1:
+                f"- Across **{seed_runs['num_seeds']} "
+                f"independent training seeds**: "
+                f"final held-out test CCC "
+                f"{_fmt(t['mean'])} ± {_fmt(t['std'])}. "
+                f"Primary seed = "
+                f"{seed_runs.get('primary_seed', '—')}; "
+                f"test performance was not used for seed selection."
+            )
+
+    if (
+        ci
+        or sig
+        or seed_runs.get("num_seeds", 1) > 1
+    ):
         lines.append("")
 
-    # ── Ablations ───────────────────────────────────────────────────
-    ablations = summary.get("ablations")
+    # --------------------------------------------------------------
+    # Ablations
+    # --------------------------------------------------------------
+
+    ablations = summary.get(
+        "ablations"
+    )
+
     if ablations:
+
         pretty = {
-            "full": "Full Fed-PhenoGraft", "no_attention": "− Asymmetric attention",
-            "no_hsic": "− HSIC shared-private loss", "centralized": "Centralized (1 client)",
-            "no_mri": "− MRI modality", "no_pet": "− PET/DaTScan modality",
-            "no_genetic": "− Genetics modality", "clinical_only": "Clinical only",
+            "full": "Full Fed-PhenoGraft",
+            "no_attention": "− Asymmetric attention",
+            "no_hsic": "− HSIC shared-private loss",
+            "centralized": "Centralized (1 client)",
+            "no_mri": "− MRI modality",
+            "no_pet": "− PET/DaTScan modality",
+            "no_genetic": "− Genetics modality",
+            "clinical_only": "Clinical only",
         }
-        order = ["full", "no_attention", "no_hsic", "centralized",
-                 "no_mri", "no_pet", "no_genetic", "clinical_only"]
-        lines += [
-            "## Ablation study (each variant retrained, same protocol)",
-            "",
-            "| Variant | Val CCC | Test CCC | Test RMSE | Test MAE |",
-            "|---------|---------|----------|-----------|----------|",
+
+        order = [
+            "full",
+            "no_attention",
+            "no_hsic",
+            "centralized",
+            "no_mri",
+            "no_pet",
+            "no_genetic",
+            "clinical_only",
         ]
-        for key in [k for k in order if k in ablations] + \
-                   [k for k in ablations if k not in order]:
+
+        lines += [
+            "## Ablation study",
+            "",
+            "| Variant | Val/Development CCC | "
+            "Test CCC | Test RMSE | Test MAE |",
+            "|---------|----------------------|"
+            "----------|-----------|----------|",
+        ]
+
+        for key in (
+            [k for k in order if k in ablations]
+            + [
+                k
+                for k in ablations
+                if k not in order
+            ]
+        ):
+
             a = ablations[key]
-            name = pretty.get(key, key)
-            bold = "**" if key == "full" else ""
+
+            name = pretty.get(
+                key,
+                key
+            )
+
+            bold = (
+                "**"
+                if key == "full"
+                else ""
+            )
+
+            # New Option-B "full" entry has no validation metric.
+            # Older ablations may still contain one.
+            if "val" in a:
+                development_ccc = _fmt(
+                    a["val"].get("ccc")
+                )
+            else:
+                development_ccc = "—"
+
             lines.append(
-                f"| {bold}{name}{bold} | {_fmt(a['val']['ccc'])} "
-                f"| {bold}{_fmt(a['test']['ccc'])}{bold} "
-                f"| {_fmt(a['test']['rmse'], 2)} | {_fmt(a['test']['mae'], 2)} |")
+                f"| {bold}{name}{bold} | "
+                f"{development_ccc} | "
+                f"{bold}{_fmt(a['test']['ccc'])}{bold} | "
+                f"{_fmt(a['test']['rmse'], 2)} | "
+                f"{_fmt(a['test']['mae'], 2)} |"
+            )
+
         lines.append("")
+
+    # --------------------------------------------------------------
+    # Figures
+    # --------------------------------------------------------------
 
     lines += [
         "## Figures",
         "",
         "| Figure | File |",
         "|--------|------|",
-        "| Model comparison | `outputs/figures/model_comparison.png` |",
-        "| Training curve | `outputs/figures/training_curve.png` |",
-        "| Predicted vs actual | `outputs/figures/pred_vs_actual.png` |",
-        "| Confusion matrix (PD vs HC) | `outputs/figures/confusion_matrix.png` |",
-        "| Attention maps | `outputs/figures/attention_maps.png` |",
-        "| Missing-modality robustness | `outputs/figures/modality_robustness.png` |",
-        "| Feature attribution (IG) | `outputs/figures/global_feature_importance.png` |",
-        "| Counterfactual gene analysis | `outputs/figures/counterfactual_genes.png` |",
+        "| Model comparison | "
+        "`outputs/figures/model_comparison.png` |",
+        "| Development training curve | "
+        "`outputs/figures/training_curve.png` |",
+        "| Predicted vs actual | "
+        "`outputs/figures/pred_vs_actual.png` |",
+        "| Confusion matrix (PD vs HC) | "
+        "`outputs/figures/confusion_matrix.png` |",
+        "| Attention maps | "
+        "`outputs/figures/attention_maps.png` |",
+        "| Missing-modality robustness | "
+        "`outputs/figures/modality_robustness.png` |",
+        "| Feature attribution (IG) | "
+        "`outputs/figures/global_feature_importance.png` |",
+        "| Counterfactual gene analysis | "
+        "`outputs/figures/counterfactual_genes.png` |",
     ]
+
     if summary.get("ablations"):
-        lines.append("| Ablation study | `outputs/figures/ablation_study.png` |")
+        lines.append(
+            "| Ablation study | "
+            "`outputs/figures/ablation_study.png` |"
+        )
+
     lines.append("")
-    save_path.write_text("\n".join(lines), encoding="utf-8")
+
+    save_path.write_text(
+        "\n".join(lines),
+        encoding="utf-8",
+    )
 
 
 def generate_report(results_dir: Path, figures_dir: Path):

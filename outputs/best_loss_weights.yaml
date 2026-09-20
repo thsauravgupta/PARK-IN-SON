@@ -1,0 +1,11 @@
+training:
+  cls_weight: 0.0
+  hsic_weight: 0.0
+  ccc_weight: 2000.0
+selection:
+  seed: 42
+  best_round: 28
+  validation_ccc: 0.42627333214601537
+  validation_rmse: 7.338258266448975
+  validation_mae: 5.065783977508545
+  validation_r2: -0.11367619037628174

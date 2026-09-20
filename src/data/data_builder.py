@@ -153,9 +153,38 @@ def build_real_dataset(config: dict) -> tuple:
                 f"(source={mri_cfg.get('source', 'synthetic')})")
     logger.info(f"  PET:       {pet_df.shape[1]} features")
     logger.info(f"  Genetic:   {genetic_df.shape[1]} features")
-    logger.info(f"  MRI missing:     {(mri_df.sum(axis=1) == 0).sum()}/{len(patnos)}")
-    logger.info(f"  PET missing:     {(pet_df.sum(axis=1) == 0).sum()}/{len(patnos)}")
-    logger.info(f"  Genetic missing: {(genetic_df.sum(axis=1) == 0).sum()}/{len(patnos)}")
+    # logger.info(f"  MRI missing:     {(mri_df.sum(axis=1) == 0).sum()}/{len(patnos)}")
+    # logger.info(f"  PET missing:     {(pet_df.sum(axis=1) == 0).sum()}/{len(patnos)}")
+    # logger.info(f"  Genetic missing: {(genetic_df.sum(axis=1) == 0).sum()}/{len(patnos)}")
+
+    mri_missing = (
+    mri_df.abs().sum(axis=1) == 0
+    )
+
+    logger.info(
+        f"  MRI missing:     "
+        f"{int(mri_missing.sum())}/{len(patnos)}"
+    )
+
+    pet_missing = (
+    pet_df.abs().sum(axis=1) == 0
+    )
+
+    genetic_missing = (
+        genetic_df.abs().sum(axis=1) == 0
+    )
+
+    logger.info(
+        f"  PET missing:     "
+        f"{int(pet_missing.sum())}/{len(patnos)}"
+    )
+
+    logger.info(
+        f"  Genetic missing: "
+        f"{int(genetic_missing.sum())}/{len(patnos)}"
+    )
+
+    
     
     return clinical_df, mri_df, pet_df, genetic_df, regression_target, diagnosis
 
