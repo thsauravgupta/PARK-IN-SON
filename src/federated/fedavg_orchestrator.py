@@ -67,7 +67,9 @@ def client_update(client_model, dataloader, epochs, lr=1e-3, weight_decay=1e-4,
     return client_model
 
 
-def evaluate_model(model, dataloader, device='cpu', return_predictions=False):
+def evaluate_model(model, dataloader, device='cpu', return_predictions=False,
+                   hsic_weight=0.1, cls_weight=0.3,
+                   return_classification=False):
     """
     Returns regression metrics {'ccc', 'rmse', 'mae', 'r2', 'pearson'} plus
     classification metrics {'auc', 'accuracy', 'f1'} when both PD and HC
@@ -76,6 +78,9 @@ def evaluate_model(model, dataloader, device='cpu', return_predictions=False):
     """
     model.eval()
     preds_all, targets_all, logits_all, diag_all = [], [], [], []
+    loss_total, sample_total = 0.0, 0
+    mse_criterion = torch.nn.MSELoss()
+    bce_criterion = torch.nn.BCEWithLogitsLoss()
 
     with torch.no_grad():
         for batch in dataloader:
@@ -86,6 +91,12 @@ def evaluate_model(model, dataloader, device='cpu', return_predictions=False):
             targets_all.append(batch['target'].cpu().numpy())
             logits_all.append(out['cls_logit'].cpu().numpy())
             diag_all.append(batch['diagnosis'].cpu().numpy())
+            batch_size = len(batch['target'])
+            batch_loss = (mse_criterion(out['pred'], batch['target'])
+                          + cls_weight * bce_criterion(out['cls_logit'], batch['diagnosis'])
+                          + hsic_weight * out['loss_hsic'])
+            loss_total += float(batch_loss.item()) * batch_size
+            sample_total += batch_size
 
     preds_all = np.concatenate(preds_all)
     targets_all = np.concatenate(targets_all)
@@ -93,6 +104,7 @@ def evaluate_model(model, dataloader, device='cpu', return_predictions=False):
     diag_all = np.concatenate(diag_all)
 
     metrics = {
+        'loss': loss_total / max(sample_total, 1),
         'ccc': concordance_correlation_coefficient(targets_all, preds_all),
         'rmse': rmse(targets_all, preds_all),
         'mae': mae(targets_all, preds_all),
@@ -100,15 +112,31 @@ def evaluate_model(model, dataloader, device='cpu', return_predictions=False):
         'pearson': pearson_r(targets_all, preds_all),
     }
 
-    # Classification metrics only make sense when both classes appear
+    from sklearn.metrics import (accuracy_score, balanced_accuracy_score,
+                                 confusion_matrix, f1_score, precision_score,
+                                 recall_score, roc_auc_score)
+    probs = 1.0 / (1.0 + np.exp(-logits_all))
+    class_preds = (probs >= 0.5).astype(int)
+    tn, fp, fn, tp = confusion_matrix(diag_all.astype(int), class_preds,
+                                      labels=[0, 1]).ravel()
+    metrics.update({
+        'accuracy': float(accuracy_score(diag_all, class_preds)),
+        'balanced_accuracy': float(balanced_accuracy_score(diag_all, class_preds)),
+        'precision': float(precision_score(diag_all, class_preds, zero_division=0)),
+        'recall': float(recall_score(diag_all, class_preds, zero_division=0)),
+        'sensitivity': float(tp / max(tp + fn, 1)),
+        'specificity': float(tn / max(tn + fp, 1)),
+        'f1': float(f1_score(diag_all, class_preds, zero_division=0)),
+        'tn': int(tn), 'fp': int(fp), 'fn': int(fn), 'tp': int(tp),
+        'n_hc': int(np.sum(diag_all == 0)), 'n_pd': int(np.sum(diag_all == 1)),
+    })
     if len(np.unique(diag_all)) > 1:
-        from sklearn.metrics import f1_score, roc_auc_score
-        probs = 1.0 / (1.0 + np.exp(-logits_all))
         metrics['auc'] = float(roc_auc_score(diag_all, probs))
-        metrics['accuracy'] = float(np.mean((probs > 0.5) == diag_all))
-        metrics['f1'] = float(f1_score(diag_all, (probs > 0.5).astype(int)))
 
     if return_predictions:
+        if return_classification:
+            probabilities = 1.0 / (1.0 + np.exp(-logits_all))
+            return metrics, preds_all, targets_all, diag_all, probabilities
         return metrics, preds_all, targets_all
     return metrics
 
@@ -156,11 +184,27 @@ def simulate_federated_training(global_model, train_client_datasets, val_dataset
 
         global_model = fedavg_aggregate(global_model, client_models, client_sizes)
 
-        val_metrics = evaluate_model(global_model, val_dataloader, device)
+        val_metrics = evaluate_model(global_model, val_dataloader, device,
+                                     hsic_weight=hsic_weight, cls_weight=cls_weight)
         entry = {'round': round_idx + 1, 'val': val_metrics}
 
+        # Client-local metrics are evaluated only on each client's own shard.
+        # No client data or predictions leave the client; only scalar summaries
+        # are retained in the diagnostic history.
+        client_metrics = []
+        for client_id, (client_model, loader, n_train) in enumerate(
+                zip(client_models, train_dataloaders, client_sizes), start=1):
+            local = evaluate_model(client_model, loader, device,
+                                   hsic_weight=hsic_weight, cls_weight=cls_weight)
+            client_metrics.append({
+                'client_id': client_id, 'n_train': n_train,
+                **{f'train_{key}': value for key, value in local.items()},
+            })
+        entry['clients'] = client_metrics
+
         if train_eval_loader is not None:
-            train_metrics = evaluate_model(global_model, train_eval_loader, device)
+            train_metrics = evaluate_model(global_model, train_eval_loader, device,
+                                           hsic_weight=hsic_weight, cls_weight=cls_weight)
             entry['train'] = train_metrics
             entry['ccc_gap'] = train_metrics['ccc'] - val_metrics['ccc']
             gap_str = (f" | Train CCC: {train_metrics['ccc']:.4f}"

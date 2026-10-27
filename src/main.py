@@ -11,6 +11,7 @@ Protocol:
   6. The TEST set is evaluated exactly once, after training completes.
 """
 import json
+import csv
 import sys
 from pathlib import Path
 
@@ -187,11 +188,15 @@ def run_pipeline():
     train_loader_eval = DataLoader(train_ds, batch_size=64, shuffle=False)
 
     per_seed_test, per_seed_val = [], []
+    all_seed_round_histories = []
     model, history, best_seed_val_ccc, best_seed = None, None, -np.inf, seed
     for s in range(num_seeds):
         run_seed = seed + s * 101
         logger.info(f"--- Seed run {s + 1}/{num_seeds} (seed={run_seed}) ---")
         seed_model, seed_history = _train_once(run_seed)
+        for round_record in seed_history:
+            round_record['seed'] = run_seed
+        all_seed_round_histories.extend(seed_history)
         v = evaluate_model(seed_model, val_loader_eval)
         t = evaluate_model(seed_model, test_loader_eval)
         per_seed_val.append(v)
@@ -214,10 +219,15 @@ def run_pipeline():
 
     # ── Phase 6: One-shot test evaluation + statistics ──────────────
     logger.info("\n[Phase 6] Final Held-Out Test Evaluation + Statistics...")
-    test_metrics, fed_test_preds, test_targets = evaluate_model(
-        model, test_loader_eval, return_predictions=True)
-    train_metrics = evaluate_model(model, train_loader_eval)
-    val_metrics = evaluate_model(model, val_loader_eval)
+    eval_loss_args = {
+        'hsic_weight': train_cfg.get('hsic_weight', 0.1),
+        'cls_weight': train_cfg.get('cls_weight', 0.3),
+    }
+    test_metrics, fed_test_preds, test_targets, test_labels, test_probabilities = evaluate_model(
+        model, test_loader_eval, return_predictions=True,
+        return_classification=True, **eval_loss_args)
+    train_metrics = evaluate_model(model, train_loader_eval, **eval_loss_args)
+    val_metrics = evaluate_model(model, val_loader_eval, **eval_loss_args)
 
     n_boot = int(eval_cfg.get("n_bootstrap", 1000))
     fed_test_ci = {m: bootstrap_metric_ci(test_targets, fed_test_preds,
@@ -305,6 +315,35 @@ def run_pipeline():
 
     results_dir = project_root / config["paths"]["results"]
     results_dir.mkdir(parents=True, exist_ok=True)
+    diagnostics_dir = project_root / "outputs" / "federated_diagnostics"
+    diagnostics_dir.mkdir(parents=True, exist_ok=True)
+
+    # Retain scalar client-local and global train/validation traces for every
+    # seed. The held-out test set remains a one-shot final evaluation only.
+    client_round_rows, server_round_rows = [], []
+    for round_record in all_seed_round_histories:
+        seed_id = round_record.get('seed', seed)
+        round_id = round_record.get('round')
+        for split_name in ('train', 'val'):
+            split_metrics = round_record.get(split_name, {})
+            if split_metrics:
+                server_round_rows.append({
+                    'seed': seed_id, 'round': round_id, 'split': split_name,
+                    **split_metrics,
+                })
+        for client in round_record.get('clients', []):
+            client_round_rows.append({
+                'seed': seed_id, 'round': round_id, **client,
+            })
+    pd.DataFrame(client_round_rows).to_csv(
+        diagnostics_dir / 'client_round_metrics.csv', index=False)
+    pd.DataFrame(server_round_rows).to_csv(
+        diagnostics_dir / 'server_round_metrics.csv', index=False)
+    pd.DataFrame({
+        'y_true_class': test_labels.astype(int),
+        'y_prob': test_probabilities,
+        'y_pred_class': (test_probabilities >= 0.5).astype(int),
+    }).to_csv(diagnostics_dir / 'heldout_classification_predictions.csv', index=False)
     summary = {
         "target": {"mode": target_mode, "label": target_label},
         "split_sizes": {"train": len(train_idx), "val": len(val_idx), "test": len(test_idx)},
@@ -313,6 +352,7 @@ def run_pipeline():
             "train": train_metrics, "val": val_metrics, "test": test_metrics,
             "train_val_ccc_gap": gap,
             "rounds_history": history,
+            "all_seed_rounds_history": all_seed_round_histories,
         },
         "statistics": {
             "n_bootstrap": n_boot,
@@ -323,6 +363,11 @@ def run_pipeline():
         "ablations": ablation_results,
         "baselines": baseline_results,
         "counterfactual_gene_deltas": counterfactual_deltas,
+        "diagnostics_files": {
+            "client_round_metrics": str(diagnostics_dir / 'client_round_metrics.csv'),
+            "server_round_metrics": str(diagnostics_dir / 'server_round_metrics.csv'),
+            "heldout_classification_predictions": str(diagnostics_dir / 'heldout_classification_predictions.csv'),
+        },
         "config": {"training": train_cfg, "model": model_cfg, "split": split_cfg,
                    "evaluation": eval_cfg, "seed": seed},
     }

@@ -1,0 +1,57 @@
+{
+  "metrics": "D:\\park\\PARK-IN-SON\\outputs\\results\\final_metrics.json",
+  "out_dir": "D:\\park\\PARK-IN-SON\\outputs\\paper_analysis",
+  "figures": [
+    "global_loss_by_round.png",
+    "global_ccc_by_round.png",
+    "global_rmse_by_round.png",
+    "global_mae_by_round.png",
+    "global_r2_by_round.png",
+    "global_pearson_by_round.png",
+    "global_auc_by_round.png",
+    "global_accuracy_by_round.png",
+    "global_balanced_accuracy_by_round.png",
+    "global_precision_by_round.png",
+    "global_recall_by_round.png",
+    "global_sensitivity_by_round.png",
+    "global_specificity_by_round.png",
+    "global_f1_by_round.png",
+    "ablation_test_ccc.png",
+    "model_test_ccc.png",
+    "fed_phenograft_architecture.png",
+    "client_loss_by_round.png",
+    "client_accuracy_by_round.png",
+    "client_balanced_accuracy_by_round.png",
+    "client_precision_by_round.png",
+    "client_recall_by_round.png",
+    "client_sensitivity_by_round.png",
+    "client_specificity_by_round.png",
+    "client_f1_by_round.png",
+    "client_auc_by_round.png",
+    "client_ccc_by_round.png",
+    "client_rmse_by_round.png",
+    "client_mae_by_round.png",
+    "client_r2_by_round.png",
+    "client_pearson_by_round.png",
+    "class_confusion_matrix.png",
+    "client_confusion_matrices.png",
+    "server_confusion_matrices.png",
+    "confusion_matrix.png"
+  ],
+  "federated_confusion_matrix_counts": "D:\\park\\PARK-IN-SON\\outputs\\figures\\federated_confusion_matrix_counts.csv",
+  "tables": [
+    "model_performance.csv",
+    "ablation_metrics.csv",
+    "input_data_inventory.csv",
+    "class_wise_metrics.csv"
+  ],
+  "client_server_metric_summaries": {
+    "client": true,
+    "server": true
+  },
+  "limitations": [
+    "Global test accuracy/loss by round: per-round test metrics are not saved (and repeated test-set monitoring would compromise the held-out evaluation); report the one-shot test metrics instead.",
+    "FedProx/SCAFFOLD comparison: actual runs and a fl-comparison CSV are required; these values cannot be inferred from FedAvg.",
+    "Activation/optimizer ablation: controlled retraining runs and an activation-study CSV are required. Adam/AdamW is an optimizer, not an activation function; vary these in separate experiments."
+  ]
+}

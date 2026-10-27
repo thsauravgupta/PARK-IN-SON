@@ -1,0 +1,27 @@
+{
+  "metrics_file": "outputs\\results\\final_metrics.json",
+  "history_source": "fed_phenograft.all_seed_rounds_history",
+  "rounds_found": 43,
+  "round_level_train_metrics": true,
+  "round_level_validation_metrics": true,
+  "client_level_metrics_logged": true,
+  "algorithm_comparison_present": false,
+  "algorithm_comparison_keys": [],
+  "generated_figures": [
+    "loss_curve.png",
+    "ccc_curve.png",
+    "rmse_curve.png",
+    "mae_curve.png",
+    "r2_curve.png",
+    "auc_curve.png",
+    "accuracy_curve.png",
+    "balanced_accuracy_curve.png",
+    "precision_curve.png",
+    "recall_curve.png",
+    "sensitivity_curve.png",
+    "specificity_curve.png",
+    "f1_curve.png"
+  ],
+  "csv": "outputs\\federated_diagnostics\\round_history.csv",
+  "interpretation": "Per-client scalar metrics are logged each round in outputs/federated_diagnostics/client_round_metrics.csv. FedProx/SCAFFOLD comparisons require actual retraining with those algorithms; they cannot be inferred from FedAvg results."
+}
